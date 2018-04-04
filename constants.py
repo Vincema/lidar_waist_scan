@@ -1,6 +1,6 @@
 
 # Path to the datas directory
-dirPath = r'/home/pi/Documents/lidar_waist_scan/lidars_datas/'
+dirPath = r'/home/pi/Documents/lidar_waist_scan/lidars_datas'
 
 # Angle of lidars
 lidarsAngle = [11*180/6,
@@ -27,7 +27,7 @@ stepNb = 10
 nbOfDatasToRetrieve = 2000
 
 # Serial port for Lidars
-serialPort = ['ttyUSB0',
-              'ttyUSB1',
-              'ttyUSB2']
+serialPort = ['/dev/ttyUSB0',
+              '/dev/ttyUSB1',
+              '/dev/ttyUSB2']
 

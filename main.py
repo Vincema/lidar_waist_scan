@@ -12,12 +12,15 @@ def disp_menu():
     print('----MENU----') 
     if drv.areConnected == 0:
         print('1: Connect to lidars')
-        print('2: Compute circumference')
+        print('2: Plot datas')
+        print('3: Compute circumference')
     else:
         print('1: Disconnect to lidars')
-        print('2: Toggle motors')
-        print('3: Launch scan')
-        print('4: Compute circumference')
+        print('2: Start motors')
+        print('3: Stop motors')
+        print('4: Launch scan')
+        print('5: Plot datas')
+        print('6: Compute circumference')
     print('q: Quit')
 
     
@@ -34,6 +37,11 @@ def execute_actions():
             # Connect to lidar
             drv.connect()
         elif choice == '2':
+            lidarsSet.read_datas_files()
+            lidarsSet.plot_raw_datas()
+            print('\nClose all figures to continue...\n')
+            plt.show(block=True)
+        elif choice == '3':
             # Compute circumference
             compute_algo_circumference()
         else:
@@ -43,14 +51,21 @@ def execute_actions():
             # Disconnect to lidar
             drv.disconnect()
         elif choice == '2':
-            # Toggle motors
             if drv.checkLinkState() == 0:
-                drv.toggle_motors()
+                drv.start_motors()        
         elif choice == '3':
+            if drv.checkLinkState() == 0:
+                drv.stop_motors()       
+        elif choice == '4':
             # Data scanning
             if drv.checkLinkState() == 0:
                 drv.scan_datas()
-        elif choice == '4':
+        elif choice == '5':
+            lidarsSet.read_datas_files()
+            lidarsSet.plot_raw_datas()
+            print('\nClose all figures to continue...\n')
+            plt.show(block=True)
+        elif choice == '6':
             compute_algo_circumference()
         else:
             print('        Wrong input!')
@@ -78,7 +93,7 @@ def compute_algo_circumference():
 
     # Show the plots
     print('\nClose all figures to continue...\n')
-    pylab.show(block=True)
+    plt.show(block=True)
 
    
 # Init lidars infos
