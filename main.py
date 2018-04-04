@@ -1,8 +1,10 @@
 import lidars
-import constants
 import utility
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import lidarsDrv as lid
+import pylab
 
 
 def disp_menu():
@@ -23,8 +25,9 @@ def execute_actions():
     choice = input('    Waiting for input: ')
 
     if choice == 'q' or choice == 'Q':
-        drv.disconnect()
-        exit()
+        if drv.areConnected == 1:
+            drv.disconnect()
+        return True
     
     if drv.areConnected == 0:
         if choice == '1':
@@ -51,7 +54,8 @@ def execute_actions():
             compute_algo_circumference()
         else:
             print('        Wrong input!')
-            
+    return False            
+        
         
 def compute_algo_circumference():
     # Read lidars datas
@@ -74,22 +78,21 @@ def compute_algo_circumference():
 
     # Show the plots
     print('\nClose all figures to continue...\n')
-    plt.show()
+    pylab.show(block=True)
 
-
-
-                  
+   
 # Init lidars infos
 lidarsSet = lidars.setOfLidars()
 
 # Init lidars
 drv = lid.driverLidars()
 
-while True:
+end = False
+while end == False:
     disp_menu()
-    execute_actions()
+    end = execute_actions()
 
-
+print("Program ended")
 
 
 

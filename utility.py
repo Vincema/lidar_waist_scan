@@ -1,7 +1,7 @@
 import math
 import constants
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Misc data arrays
 mergedPointsXY = []
