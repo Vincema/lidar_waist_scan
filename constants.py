@@ -1,6 +1,6 @@
 
 # Path to the datas directory
-dirPath = r'C:\Users\ProBook\Documents\Vincent MAIRE\Scilab\Lidar'
+dirPath = r'/home/pi/Documents/lidar_waist_scan/lidars_datas/'
 
 # Angle of lidars
 lidarsAngle = [11*180/6,
@@ -27,7 +27,7 @@ stepNb = 10
 nbOfDatasToRetrieve = 2000
 
 # Serial port for Lidars
-serialPort = ['COM3',
-              'COM5',
-              'COM6']
+serialPort = ['ttyUSB0',
+              'ttyUSB1',
+              'ttyUSB2']
 
