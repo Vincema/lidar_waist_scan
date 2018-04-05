@@ -31,3 +31,10 @@ serialPort = ['/dev/ttyUSB0',
               '/dev/ttyUSB1',
               '/dev/ttyUSB2']
 
+# Speed of servos
+servosSpeed = 200
+
+# Servos IDs
+servosIDs = [1,2,3]
+
+
