@@ -51,15 +51,19 @@ def execute_actions():
             # Disconnect to lidar
             drv.disconnect()
         elif choice == '2':
-            if drv.checkLinkState() == 0:
+            if drv.check_link_state() == 0:
                 drv.start_motors()        
         elif choice == '3':
-            if drv.checkLinkState() == 0:
+            if drv.check_link_state() == 0:
                 drv.stop_motors()       
         elif choice == '4':
-            # Data scanning
-            if drv.checkLinkState() == 0:
-                drv.scan_datas()
+            height = int(input('    Please enter patient\'s height in cm: '))
+            if height > 0:
+                # Data scanning
+                if drv.check_link_state() == 0:
+                    drv.scan_datas(height*10)
+            else:
+                print('    Incorrect height!')
         elif choice == '5':
             lidarsSet.read_datas_files()
             lidarsSet.plot_raw_datas()

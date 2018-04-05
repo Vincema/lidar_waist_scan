@@ -38,7 +38,7 @@ class setOfLidars:
     def __init__(self):
         self.lidarsSet = []
         for i in range(3):
-            self.lidarsSet.append(lidarInfos(constants.lidarsDist[i],constants.lidarsAngle[i]))
+            self.lidarsSet.append(lidarInfos(constants.lidarsDist,constants.lidarsAngle[i]))
 
     def read_datas_files(self):
         for i in range(3):
