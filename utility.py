@@ -24,9 +24,10 @@ figDistances = 3
 
 
 class point:
-    def __init__(self,x=0,y=0):
+    def __init__(self,x=0,y=0,z=0):
         self.x = x
         self.y = y
+        self.z = z
 
 
 class distAngleData:
@@ -80,7 +81,7 @@ def fit_circle(datas):
 
     
 def is_useful_data(pointXY):
-    if math.sqrt(pointXY.x**2 + pointXY.y**2) <= (0.75 * min(constants.lidarsDist)):
+    if math.sqrt(pointXY.x**2 + pointXY.y**2) <= (0.75 * constants.lidarsDist):
         return True
     else:
         return False

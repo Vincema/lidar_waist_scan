@@ -25,7 +25,7 @@ fMax = 0.15
 stepNb = 10
 
 # Nb of datas to retrieve for each lidar in total
-nbOfDatasToRetrieve = 2000
+nbOfDatasToRetrieve = 50
 
 # Serial port for Lidars
 serialPort = ['/dev/ttyUSB0',
@@ -37,13 +37,6 @@ servosSpeed = 50
 
 # Servos IDs
 servosIDs = [1,2,3]
-
-# Scanning precision factor:
-#   <1: Missing body part
-#   =1: Scan the whole waist shape exactly
-#   >1: Scan more than once some parts
-#   =2: Scan twice the waist shape
-scanPrecisionFactor = 1.5
 
 # Heights margin for scanning (arround the patient's height)
 margin_top = 25

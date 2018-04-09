@@ -22,16 +22,7 @@ class lidarInfos:
         for i in range(len(datas)):
             x = datas[i][1] * math.cos(((visionAngle + datas[i][0])%360)*math.pi/180) + self.position.x
             y = datas[i][1] * math.sin(((visionAngle + datas[i][0])%360)*math.pi/180) + self.position.y
-            
-            # Remove duplicates
-            temp = utility.point(x,y)
-            once = True
-            for p in self.pointDatas:
-                if p.x == temp.x and p.y == temp.y:
-                    once = False
-                
-            if once == True:
-                self.pointDatas.append(temp)
+            self.pointDatas.append(utility.point(x,y))
 
         
 class setOfLidars:
