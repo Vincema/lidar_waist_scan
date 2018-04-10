@@ -64,9 +64,8 @@ def get_neighbors(datas,tres,pointIndex,distMatrix):
 # Clustering points to remove outliers (DBSCAN method)
 def clustering(datas):
     ptMin = math.floor(0.90*len(datas))
-    deltaMin = 5
-    a = 0
-    b = 1000
+    a = constants.aStartClust 
+    b = constants.bStartClust
     nbInliers = 0
     
     distMatrix = np.zeros((len(datas),len(datas)))
@@ -76,7 +75,7 @@ def clustering(datas):
             distMatrix[i][j] = dist
             distMatrix[j][i] = dist
     
-    while b-a > deltaMin:
+    while b-a > constants.deltaMinClust:
         eps = a+((b-a)/2)
         
         # -1: Undefined

@@ -122,19 +122,22 @@ class driverLidars:
     def wait_servos_moving(self):
         for lidarNb in range(3):
             timeout = 100 # 10 seconds
-            try:
-                while self.serial_connection.is_moving(constants.servosIDs[lidarNb]) == True:
-                    timeout -= 1
-                    if timeout <= 0:
-                        raise
-                    time.sleep(0.1)
-            except:
-                print("    Problem with the servo", lidarNb+1,"!")
-                self.disconnect()
-                return -1
+            while True:
+                try:
+                    while self.serial_connection.is_moving(constants.servosIDs[lidarNb]) == True:
+                        timeout -= 1
+                        if timeout <= 0:
+                            print("    Problem with the servo", lidarNb+1,"!")
+                            self.disconnect()
+                            return -1
+                        time.sleep(0.1)
+                    break
+                except:
+                    pass
         return 0
     
-    def single_scan(self,current_angle_z,meas_nb,erase_file):
+    def single_scan(self,current_angle_z,meas_nb,erase_file): 
+        
         file = []
         iterMeas = []
         datasLeft = []
@@ -191,6 +194,13 @@ class driverLidars:
         print('Datas scanning...')
         self.start_motors()
         
+        # Clean the infos file
+        try:
+            infoFile = open(constants.dirPath + r'/scan_infos.txt','w')
+        except:
+            print("    Cannot open infos file")
+            return -1
+        
         [inclination_array,nbMes_array] = compute_angle_array_for_scan(height)
         
         for i in range(len(inclination_array)):
@@ -211,9 +221,14 @@ class driverLidars:
             else:
                 if self.single_scan(inclination_array[i],nbMes_array[i],False) != 0:
                     return -1                    
-               
-        print('    All the datas have been successfully retrieved.') 
-        self.stop_motors()
+        
+        # Write the height of scan in the info file
+        try:
+            infoFile = open(constants.dirPath + r'/scan_infos.txt','a')
+            infoFile.write(str(height))
+        except:
+            print("    Cannot open infos file")
+            return -1
         
         try:
             # Broadcast moving action to all servos
@@ -222,5 +237,8 @@ class driverLidars:
             print("    Problem with the serial connection!")
             self.disconnect()
             return -1
+    
+        print('    All the datas have been successfully retrieved.') 
+        self.stop_motors()
         return 0
         
