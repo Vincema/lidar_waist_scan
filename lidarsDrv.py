@@ -134,7 +134,7 @@ class driverLidars:
                 return -1
         return 0
     
-    def single_scan(self,current_angle,meas_nb,erase_file):
+    def single_scan(self,current_angle_z,meas_nb,erase_file):
         file = []
         iterMeas = []
         datasLeft = []
@@ -167,7 +167,7 @@ class driverLidars:
                         dist = datas[3]
                         # First selection of points 
                         if angle >= -30 and angle <= +30 and dist > 0:
-                            file[lidarNb].write(str(angle) + ' ' + str(dist) + ' ' + str(current_angle) + '\n')
+                            file[lidarNb].write(str(angle) + ' ' + str(current_angle_z) + ' ' + str(dist) + '\n')
                             datasLeft[lidarNb] -= 1
                             if datasLeft[lidarNb] < 1:
                                 done[lidarNb] = True

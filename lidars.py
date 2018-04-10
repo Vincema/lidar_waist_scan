@@ -5,37 +5,41 @@ import reader
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
 
 class lidarInfos:
-    def __init__(self,distCenter,angle):
+    def __init__(self,distCenter,angle,height):
         self.distCenter = distCenter
         self.angle = angle
+        self.height = height
         self.position = utility.point(self.distCenter*math.cos(self.angle*math.pi/180),
-                                      self.distCenter*math.sin(self.angle*math.pi/180))
+                                      self.distCenter*math.sin(self.angle*math.pi/180),
+                                      self.height)
         self.pointDatas = []
     
     def save_datas(self,datas):
         self.pointDatas = []
         visionAngle = (self.angle + 180)%360 # Get the opposite of this angle
         for i in range(len(datas)):
-            x = datas[i][1] * math.cos(((visionAngle + datas[i][0])%360)*math.pi/180) + self.position.x
-            y = datas[i][1] * math.sin(((visionAngle + datas[i][0])%360)*math.pi/180) + self.position.y
-            self.pointDatas.append(utility.point(x,y))
+            x = datas[i][2] * math.cos(((visionAngle + datas[i][0])%360)*math.pi/180) * math.cos((datas[i][1]%360)*math.pi/180) + self.position.x
+            y = datas[i][2] * math.sin(((visionAngle + datas[i][0])%360)*math.pi/180) + self.position.y
+            z = - datas[i][2] * math.cos(((visionAngle + datas[i][0])%360)*math.pi/180) * math.sin((datas[i][1]%360)*math.pi/180) + self.position.z
+            self.pointDatas.append(utility.point(x,y,z))
 
         
 class setOfLidars:
     def __init__(self):
         self.lidarsSet = []
         for i in range(3):
-            self.lidarsSet.append(lidarInfos(constants.lidarsDist,constants.lidarsAngle[i]))
+            self.lidarsSet.append(lidarInfos(constants.lidarsDist,constants.lidarsAngle[i],constants.lidarsHeight))
 
     def read_datas_files(self):
         for i in range(3):
             self.lidarsSet[i].save_datas(reader.read_data_single_lidar(i))
 
-    def plot_origin_and_lidar(self):
+    def plot_origin_and_lidars_2D(self):
         plt.plot([0],[0],'cx',ms=5,mew=2)
         lidarPosPointsX = []
         lidarPosPointsY = []
@@ -45,36 +49,37 @@ class setOfLidars:
         plt.plot(lidarPosPointsX,lidarPosPointsY,'rx',label='Lidars',ms=10,mew=2)
     
     def plot_raw_datas(self):
-        plt.figure(utility.figRaw)
+        fig = plt.figure(utility.figRaw)
+        ax = fig.add_subplot(111, projection='3d')
         
-        plt.title('Raw datas')
-        plt.xlabel('x position (mm)')
-        plt.ylabel('y position (mm)')
-        
-        self.plot_origin_and_lidar()
+        ax.set_xlabel('x position (mm)')
+        ax.set_ylabel('y position (mm)')
+        ax.set_zlabel('z position (mm)')
             
         pointDatasL1X = []
         pointDatasL1Y = []
+        pointDatasL1Z = []
         pointDatasL2X = []
         pointDatasL2Y = []
+        pointDatasL2Z = []
         pointDatasL3X = []
         pointDatasL3Y = []
+        pointDatasL3Z = []
         for i in range(len(self.lidarsSet[0].pointDatas)):
             pointDatasL1X.append(self.lidarsSet[0].pointDatas[i].x)
             pointDatasL1Y.append(self.lidarsSet[0].pointDatas[i].y)
+            pointDatasL1Z.append(self.lidarsSet[0].pointDatas[i].z)
         for i in range(len(self.lidarsSet[1].pointDatas)):
             pointDatasL2X.append(self.lidarsSet[1].pointDatas[i].x)
             pointDatasL2Y.append(self.lidarsSet[1].pointDatas[i].y)
+            pointDatasL2Z.append(self.lidarsSet[1].pointDatas[i].z)
         for i in range(len(self.lidarsSet[2].pointDatas)):
             pointDatasL3X.append(self.lidarsSet[2].pointDatas[i].x)
             pointDatasL3Y.append(self.lidarsSet[2].pointDatas[i].y)
-        plt.plot(pointDatasL1X,pointDatasL1Y,'b.',label='Raw datas Lidar 1',ms=2)
-        plt.plot(pointDatasL2X,pointDatasL2Y,'g.',label='Raw datas Lidar 2',ms=2)
-        plt.plot(pointDatasL3X,pointDatasL3Y,'k.',label='Raw datas Lidar 3',ms=2)
-
-        plt.gca().set_aspect('equal', adjustable='box')
-        plt.axis(constants.boundsDatasLidars)
-        plt.legend()
+            pointDatasL3Z.append(self.lidarsSet[2].pointDatas[i].z)
+        ax.scatter(pointDatasL1X,pointDatasL1Y,pointDatasL1Z,'b',label='Raw datas Lidar 1')
+        ax.scatter(pointDatasL2X,pointDatasL2Y,pointDatasL2Z,'g',label='Raw datas Lidar 2')
+        ax.scatter(pointDatasL3X,pointDatasL3Y,pointDatasL3Z,'k',label='Raw datas Lidar 3')
 
     def plot_merged_datas(self):
         global mergedPointsXY
@@ -86,7 +91,7 @@ class setOfLidars:
         plt.xlabel('x position (mm)')
         plt.ylabel('y position (mm)')
         
-        self.plot_origin_and_lidar()
+        self.plot_origin_and_lidars_2D()
         mergedPointsX = []
         mergedPointsY = []
         centeredPointsX = []
