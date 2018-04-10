@@ -1,4 +1,4 @@
-from rplidar import RPLidar
+from drivers.rplidar import RPLidar
 from pyax12.connection import Connection
 import constants
 import time
@@ -163,7 +163,7 @@ class driverLidars:
                 for lidarNb in range(3):
                     if done[lidarNb] == False:
                         datas = next(iterMeas[lidarNb])
-                        angle = datas[2]-180
+                        angle = -1*(datas[2]-180)
                         dist = datas[3]
                         # First selection of points 
                         if angle >= -30 and angle <= +30 and dist > 0:

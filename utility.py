@@ -52,26 +52,33 @@ def center_datas():
     for i in range(len(clusteredPointsXY)):
         centeredPointsXY.append(point(clusteredPointsXY[i].x-origin.x,clusteredPointsXY[i].y-origin.y))
 
-def get_neighbors(datas,tres,pointIndex):
+def get_neighbors(datas,tres,pointIndex,distMatrix):
     neighbors = []
     for i in range(len(datas)):
         if pointIndex != i:
-            dist = math.sqrt((datas[i].x-datas[pointIndex].x)**2 + (datas[i].y-datas[pointIndex].y)**2)
-            if dist < tres:
+            if distMatrix[pointIndex][i] < tres:
                 neighbors.append(i)
     return neighbors
 
 
 # Clustering points to remove outliers (DBSCAN method)
 def clustering(datas):
-    ptMin = 0.90*len(datas)
-    deltaMin = 10
+    ptMin = math.floor(0.90*len(datas))
+    deltaMin = 5
     a = 0
     b = 1000
     nbInliers = 0
-
+    
+    distMatrix = np.zeros((len(datas),len(datas)))
+    for i in range(len(datas)):
+        for j in range(i,len(datas)):
+            dist = math.sqrt((datas[i].x-datas[j].x)**2 + (datas[i].y-datas[j].y)**2)
+            distMatrix[i][j] = dist
+            distMatrix[j][i] = dist
+    
     while b-a > deltaMin:
-        eps = (b-a)/2
+        eps = a+((b-a)/2)
+        
         # -1: Undefined
         # 0: Noise
         # >0: Cluster NB
@@ -83,7 +90,7 @@ def clustering(datas):
         
         for i in range(len(datas)):
             if pointLabel[i] == -1:
-                neighbors = get_neighbors(datas,eps,i)
+                neighbors = get_neighbors(datas,eps,i,distMatrix)
                 if len(neighbors) < ptMin:
                     pointLabel[i] = 0
                 else:
@@ -97,7 +104,7 @@ def clustering(datas):
                             pointLabel[j] = clust
                         if pointLabel[j] == -1:
                             pointLabel[j] = clust
-                            neighbors = get_neighbors(datas,eps,i)
+                            neighbors = get_neighbors(datas,eps,i,distMatrix)
                             if len(neighbors) >= ptMin:
                                 for k in range(len(neighbors)):
                                     seedSet.append(neighbors[k])
@@ -107,11 +114,11 @@ def clustering(datas):
             if pointLabel[i] != 0:
                 nbInliers += 1
         if nbInliers < ptMin:
-            a += eps
+            a = eps
         else:
-            b -= eps
+            b = eps
             tempPointLabel = pointLabel
-                
+            
     newDatas = []
     for i in range(len(datas)):
         if tempPointLabel[i] != 0:
@@ -271,7 +278,7 @@ def find_optimal_smooth_factor():
         [tmpLoessResults, tmpRobFactor] = loess_regression(distancePoints,smoothFactor[iter],0,1)
         tempDatas = tmpLoessResults
 
-    print("Optimized smooth factor values = " , format(smoothFactor[0],'.2f') , " and " , format(smoothFactor[1],'.2f'))
+    print("Optimized smooth factor values = " , format(smoothFactor[0],'.3f') , " and " , format(smoothFactor[1],'.3f'))
 
 
 def loess_algorithm():

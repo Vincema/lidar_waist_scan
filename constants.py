@@ -14,18 +14,18 @@ lidarsDist = 250
 lidarsHeight = 1000
 
 # Bounds of plots
-boundsDatasLidars = [-520,
-                     520,
+boundsDatasLidars = [-500,
+                     500,
                      -400,
                      600]
 
 # Smooth Factor f optimization
 fMin = 0.02
-fMax = 0.15
-stepNb = 10
+fMax = 0.12
+stepNb = 15
 
 # Nb of datas to retrieve for each lidar in total
-nbOfDatasToRetrieve = 500
+nbOfDatasToRetrieve = 200
 
 # Serial port for Lidars
 serialPort = ['/dev/ttyUSB0',
