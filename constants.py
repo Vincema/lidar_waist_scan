@@ -8,7 +8,7 @@ lidarsAngle = [11*180/6,
                3*180/6]
 
 # Distance of lidars from center
-lidarsDist = 500
+lidarsDist = 250
 
 # Height of lidars from the base
 lidarsHeight = 1000
@@ -25,7 +25,7 @@ fMax = 0.15
 stepNb = 10
 
 # Nb of datas to retrieve for each lidar in total
-nbOfDatasToRetrieve = 50
+nbOfDatasToRetrieve = 500
 
 # Serial port for Lidars
 serialPort = ['/dev/ttyUSB0',
@@ -33,7 +33,7 @@ serialPort = ['/dev/ttyUSB0',
               '/dev/ttyUSB2']
 
 # Speed of servos
-servosSpeed = 50
+servosSpeed = 100
 
 # Servos IDs
 servosIDs = [1,2,3]

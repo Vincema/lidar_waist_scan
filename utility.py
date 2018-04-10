@@ -7,6 +7,7 @@ import numpy as np
 
 # Misc data arrays
 mergedPointsXY = []
+clusteredPointsXY = []
 centeredPointsXY = []
 distancePoints = []
 loessPointsIter1 = []
@@ -36,18 +37,90 @@ class distAngleData:
         self.alpha = alpha
 
 
+# Center datas and remove outliers
 def center_datas():
     global mergedPointsXY
 
-    origin = fit_circle(mergedPointsXY)
+    global clusteredPointsXY
+    clusteredPointsXY = clustering(mergedPointsXY)
+
+    origin = fit_circle(clusteredPointsXY)
     
     global centeredPointsXY
     centeredPointsXY = []
     
-    for i in range(len(mergedPointsXY)):
-        centeredPointsXY.append(point(mergedPointsXY[i].x-origin.x,mergedPointsXY[i].y-origin.y))
+    for i in range(len(clusteredPointsXY)):
+        centeredPointsXY.append(point(clusteredPointsXY[i].x-origin.x,clusteredPointsXY[i].y-origin.y))
+
+def get_neighbors(datas,tres,pointIndex):
+    neighbors = []
+    for i in range(len(datas)):
+        if pointIndex != i:
+            dist = math.sqrt((datas[i].x-datas[pointIndex].x)**2 + (datas[i].y-datas[pointIndex].y)**2)
+            if dist < tres:
+                neighbors.append(i)
+    return neighbors
 
 
+# Clustering points to remove outliers (DBSCAN method)
+def clustering(datas):
+    ptMin = 0.90*len(datas)
+    deltaMin = 10
+    a = 0
+    b = 1000
+    nbInliers = 0
+
+    while b-a > deltaMin:
+        eps = (b-a)/2
+        # -1: Undefined
+        # 0: Noise
+        # >0: Cluster NB
+        pointLabel = []
+        clust = 0
+        
+        for i in range(len(datas)):
+            pointLabel.append(-1)
+        
+        for i in range(len(datas)):
+            if pointLabel[i] == -1:
+                neighbors = get_neighbors(datas,eps,i)
+                if len(neighbors) < ptMin:
+                    pointLabel[i] = 0
+                else:
+                    clust = clust+1
+                    pointLabel[i] = clust
+                    seedSet = []
+                    for j in range(len(neighbors)):
+                        seedSet.append(neighbors[j])
+                    for j in seedSet:
+                        if pointLabel[j] == 0:
+                            pointLabel[j] = clust
+                        if pointLabel[j] == -1:
+                            pointLabel[j] = clust
+                            neighbors = get_neighbors(datas,eps,i)
+                            if len(neighbors) >= ptMin:
+                                for k in range(len(neighbors)):
+                                    seedSet.append(neighbors[k])
+                            
+        nbInliers=0
+        for i in range(len(datas)):
+            if pointLabel[i] != 0:
+                nbInliers += 1
+        if nbInliers < ptMin:
+            a += eps
+        else:
+            b -= eps
+            tempPointLabel = pointLabel
+                
+    newDatas = []
+    for i in range(len(datas)):
+        if tempPointLabel[i] != 0:
+            newDatas.append(datas[i])
+    
+    return newDatas
+            
+
+# Circle fitting
 def fit_circle(datas):
     n = len(datas)
     x = []
@@ -147,20 +220,24 @@ def find_optimal_smooth_factor():
         quadError = []
         robFactor = []
         print("    Optimisation - Step 1")
-        index = 1
+        index = 0
         for f in fSeek:
-            print("    Iter " , index , '/' , constants.stepNb)
-            index += 1
+            print("        Iter " , index+1 , '/' , constants.stepNb)
             [tmpLoessResults, tmpRobFactor] = loess_regression(tempDatas,f,0,0)
             fValues.append(f)
             tmpQuadError = 0
             for i in range(len(distancePoints)):
                 tmpQuadError += (distancePoints[i].dist - tmpLoessResults[i].dist)**2
-            quadError.append(tmpQuadError)
-            robFactor.append(tmpRobFactor)
+            if index > 0 and tmpQuadError > quadError[index-1]:
+                print("        Mimimum found")
+                break
+            else:
+                quadError.append(tmpQuadError)
+                robFactor.append(tmpRobFactor)
+                index += 1
 
         minVal = np.inf
-        for i in range(constants.stepNb):
+        for i in range(len(quadError)):
             if quadError[i] < minVal:
                 minVal = quadError[i]
                 f0 = fValues[i]
@@ -170,19 +247,23 @@ def find_optimal_smooth_factor():
         fValues = []
         quadError = []
         print("    Optimisation - Step 2")
-        index = 1
+        index = 0
         for f in fSeek:
-            print("    Iter " , index , '/' , constants.stepNb)
-            index += 1
+            print("        Iter " , index+1 , '/' , constants.stepNb)
             [tmpLoessResults, tmpRobFactor] = loess_regression(tempDatas,f,0,1)
             fValues.append(f)
             tmpQuadError = 0
             for i in range(len(distancePoints)):
                 tmpQuadError += robFactorF0[i]*((distancePoints[i].dist - tmpLoessResults[i].dist)**2)
-            quadError.append(tmpQuadError)
+            if index > 0 and tmpQuadError > quadError[index-1]:
+                print("        Mimimum found")
+                break
+            else:    
+                quadError.append(tmpQuadError)
+                index += 1
      
         minVal = np.inf
-        for i in range(constants.stepNb):
+        for i in range(len(quadError)):
             if quadError[i] < minVal:
                 minVal = quadError[i]
                 smoothFactor[iter] = fValues[i]
