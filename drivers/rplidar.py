@@ -256,8 +256,8 @@ class RPLidar(object):
 
     def clear_input(self):
         '''Clears input buffer by reading all available data'''
-        time.sleep(.010)
-        self._serial_port.read_all()
+        time.sleep(.001)
+        self._serial_port.flushInput()
 
     def stop(self):
         '''Stops scanning process, disables laser diode and the measurment

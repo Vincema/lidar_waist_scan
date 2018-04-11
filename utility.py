@@ -13,6 +13,7 @@ distancePoints = []
 loessPointsIter1 = []
 loessPointsIter2 = []
 loessResultXY = []
+patientHeight = 0
 
 # Misc variables
 circum = 0
@@ -63,7 +64,7 @@ def get_neighbors(datas,tres,pointIndex,distMatrix):
 
 # Clustering points to remove outliers (DBSCAN method)
 def clustering(datas):
-    ptMin = math.floor(0.90*len(datas))
+    ptMin = math.floor(constants.nonNoiseMeas*len(datas))
     a = constants.aStartClust 
     b = constants.bStartClust
     nbInliers = 0
@@ -159,11 +160,14 @@ def fit_circle(datas):
     return origin
 
     
-def is_useful_data(pointXY):
-    if math.sqrt(pointXY.x**2 + pointXY.y**2) <= (0.75 * constants.lidarsDist):
-        return True
-    else:
-        return False
+def is_useful_data(pointXYZ):
+    # Is in the circle of 75% of the radius of the outter circle formed by the lidars 
+    if math.sqrt(pointXYZ.x**2 + pointXYZ.y**2) <= (0.75 * constants.lidarsDist):
+        # Is at the good height
+        if pointXYZ.z >= patientHeight-constants.margin_bot and pointXYZ.z <= patientHeight+constants.margin_top:
+            return True
+    
+    return False
 
 
 def plot_distances():

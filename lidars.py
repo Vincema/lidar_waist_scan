@@ -19,14 +19,25 @@ class lidarInfos:
                                       self.height)
         self.pointDatas = []
     
-    def save_datas(self,datas):
+    def save_datas(self,datas,patientHeight):
         self.pointDatas = []
         visionAngle = (self.angle + 180)%360 # Get the opposite of this angle
+        
         for i in range(len(datas)):
-            x = datas[i][2] * math.cos(((visionAngle + datas[i][0])%360)*math.pi/180) * math.cos((datas[i][1]%360)*math.pi/180) + self.position.x
-            y = datas[i][2] * math.sin(((visionAngle + datas[i][0])%360)*math.pi/180) + self.position.y
-            z = - datas[i][2] * math.cos(((visionAngle + datas[i][0])%360)*math.pi/180) * math.sin((datas[i][1]%360)*math.pi/180) + self.position.z
+            dist = datas[i][2]
+            c1 = math.cos(visionAngle*math.pi/180)
+            c2 = math.cos(datas[i][1]*math.pi/180)
+            c3 = math.cos(datas[i][0]*math.pi/180)
+            s1 = math.sin(visionAngle*math.pi/180)
+            s2 = math.sin(datas[i][1]*math.pi/180)
+            s3 = math.sin(datas[i][0]*math.pi/180)
+            x = dist*((c1*c2*c3)-(s1*s3)) + self.position.x
+            y = dist*((c1*s3)+(c2*c3*s1)) + self.position.y
+            z = dist*(-1)*(c3*s2) + self.position.z
             self.pointDatas.append(utility.point(x,y,z))
+            
+        # Save patient's height
+        utility.patientHeight = patientHeight
 
         
 class setOfLidars:
@@ -37,7 +48,8 @@ class setOfLidars:
 
     def read_datas_files(self):
         for i in range(3):
-            self.lidarsSet[i].save_datas(reader.read_data_single_lidar(i))
+            datas,hgt = reader.read_data_single_lidar(i)
+            self.lidarsSet[i].save_datas(datas,hgt)
 
     def plot_origin_and_lidars_2D(self):
         plt.plot([0],[0],'cx',ms=5,mew=2)
@@ -55,6 +67,15 @@ class setOfLidars:
         ax.set_xlabel('x position (mm)')
         ax.set_ylabel('y position (mm)')
         ax.set_zlabel('z position (mm)')
+        
+        lidarPosPointsX = []
+        lidarPosPointsY = []
+        lidarPosPointsZ = []
+        for i in range(3):
+            lidarPosPointsX.append(self.lidarsSet[i].position.x)
+            lidarPosPointsY.append(self.lidarsSet[i].position.y)
+            lidarPosPointsZ.append(self.lidarsSet[i].position.z)
+        ax.scatter(lidarPosPointsX,lidarPosPointsY,lidarPosPointsZ,c='r',marker='X',label='Lidars')
             
         pointDatasL1X = []
         pointDatasL1Y = []
@@ -77,9 +98,13 @@ class setOfLidars:
             pointDatasL3X.append(self.lidarsSet[2].pointDatas[i].x)
             pointDatasL3Y.append(self.lidarsSet[2].pointDatas[i].y)
             pointDatasL3Z.append(self.lidarsSet[2].pointDatas[i].z)
-        ax.scatter(pointDatasL1X,pointDatasL1Y,pointDatasL1Z,'b',label='Raw datas Lidar 1')
-        ax.scatter(pointDatasL2X,pointDatasL2Y,pointDatasL2Z,'g',label='Raw datas Lidar 2')
-        ax.scatter(pointDatasL3X,pointDatasL3Y,pointDatasL3Z,'k',label='Raw datas Lidar 3')
+        ax.scatter(pointDatasL1X,pointDatasL1Y,pointDatasL1Z,c='b',marker='.',label='Raw datas Lidar 1')
+        ax.scatter(pointDatasL2X,pointDatasL2Y,pointDatasL2Z,c='g',marker='.',label='Raw datas Lidar 2')
+        ax.scatter(pointDatasL3X,pointDatasL3Y,pointDatasL3Z,c='k',marker='.',label='Raw datas Lidar 3')
+        
+        ax.set_xbound(constants.boundsDatasLidars[0],constants.boundsDatasLidars[1])
+        ax.set_ybound(constants.boundsDatasLidars[2],constants.boundsDatasLidars[3])
+        ax.set_zbound(0,constants.lidarsHeight*2)
 
     def plot_merged_datas(self):
         global mergedPointsXY
@@ -99,6 +124,7 @@ class setOfLidars:
         for i in range(len(utility.mergedPointsXY)):
             mergedPointsX.append(utility.mergedPointsXY[i].x)
             mergedPointsY.append(utility.mergedPointsXY[i].y)
+        for i in range(len(utility.centeredPointsXY)):
             centeredPointsX.append(utility.centeredPointsXY[i].x)
             centeredPointsY.append(utility.centeredPointsXY[i].y)
         plt.plot(mergedPointsX,mergedPointsY,'k.',label='Raw datas',ms=2)
@@ -118,7 +144,7 @@ class setOfLidars:
         utility.centeredPointsXY = []
         for i in range(3):
             for j in range(len(self.lidarsSet[i].pointDatas)):
-                if utility.is_useful_data(utility.point(self.lidarsSet[i].pointDatas[j].x,self.lidarsSet[i].pointDatas[j].y)):
+                if utility.is_useful_data(utility.point(self.lidarsSet[i].pointDatas[j].x,self.lidarsSet[i].pointDatas[j].y,self.lidarsSet[i].pointDatas[j].z)):
                     utility.mergedPointsXY.append(utility.point(self.lidarsSet[i].pointDatas[j].x,self.lidarsSet[i].pointDatas[j].y))
         # Center the datas according to a circle fitting
         utility.center_datas()

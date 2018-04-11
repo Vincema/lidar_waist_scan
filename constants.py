@@ -14,14 +14,14 @@ lidarsDist = 250
 lidarsHeight = 1000
 
 # Bounds of plots
-boundsDatasLidars = [-500,
-                     500,
-                     -400,
-                     600]
+boundsDatasLidars = [-400,
+                     400,
+                     -300,
+                     400]
 
 # Smooth Factor f optimization
 fMin = 0.02
-fMax = 0.12
+fMax = 0.15
 stepNb = 15
 
 # Nb of datas to retrieve for each lidar in total
@@ -32,8 +32,8 @@ serialPort = ['/dev/ttyUSB0',
               '/dev/ttyUSB1',
               '/dev/ttyUSB2']
 
-# Speed of servos
-servosSpeed = 100
+# Speed of servos (0-255)
+servosSpeed = 50
 
 # Servos IDs
 servosIDs = [1,2,3]
@@ -44,3 +44,9 @@ margin_bot = 25
 
 # Size of the zone from the lidar where measurement can't be performed
 deadZone = 100
+
+# Clustering constants
+deltaMinClust = 5  # in mm
+aStartClust = 0    # Start value for dichotomy
+bStartClust = 1000 # Start value for dichotomy
+nonNoiseMeas = 0.9 # Minimum fraction of the measurments count considered as ok

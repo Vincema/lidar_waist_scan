@@ -174,11 +174,11 @@ class driverLidars:
                             datasLeft[lidarNb] -= 1
                             if datasLeft[lidarNb] < 1:
                                 done[lidarNb] = True
-                            
         except:
             print('    Cannot retrieve datas on lidar ',lidarNb+1,'!')
             self.disconnect()
             return -1
+        
         for lidarNb in range(3):
             try:
                 self.lidars[lidarNb].stop()
@@ -221,7 +221,7 @@ class driverLidars:
             else:
                 if self.single_scan(inclination_array[i],nbMes_array[i],False) != 0:
                     return -1                    
-        
+            
         # Write the height of scan in the info file
         try:
             infoFile = open(constants.dirPath + r'/scan_infos.txt','a')
