@@ -314,26 +314,22 @@ def linear_weighted_reg(X,Y,W,G):
     # Number of points
     nbPoints = len(X)
 
-    # Computing the equation (leat squares min)
-    WGX = []
-    WGY = []
-    WG = []
-    for i in range(nbPoints):
-        WGX.append(W[i] * G[i] * X[i])
-        WGY.append(W[i] * G[i] * Y[i])
-        WG.append(W[i] * G[i])
+    # Computing the equation (least squares min)
+    i = list(range(nbPoints))
+    
+    WG = list(map(lambda x: W[x] * G[x], i))    # Replace the loop/append because this function is called many time
+    WGX = list(map(lambda x: WG[x] * X[x], i))
+    WGY = list(map(lambda x: WG[x] * Y[x], i))
 
     mX = sum(WGX)/sum(WG)
     mY = sum(WGY)/sum(WG)
 
-    num = []
-    den = []
-    for i in range(nbPoints):
-        num.append(W[i] * G[i] * (X[i]-mX) * (Y[i]-mY))
-        den.append(W[i] * G[i] * (X[i]-mX)**2)
-
+    num = list(map(lambda x: WG[x] * (X[x]-mX) * (Y[x]-mY), i))
+    den = list(map(lambda x: WG[x] * (X[x]-mX)**2, i))
+        
     param1 = sum(num)/sum(den)
     param2 = mY - mX*param1
+    
     return [param1,param2]
     
 
@@ -348,9 +344,9 @@ def loess_regression(datas,smoothFact,useYi,useRobust):
     # Compute the number of points included by the specified span factor
     nSub = math.ceil(smoothFact * nDatas)
     
-    # Make nSub odd if even and =3 if < 3
-    if nSub < 3:
-        nSub = 3
+    # Make nSub odd if even and =7 if < 7 (It makes no sense to run loess on so few points)
+    if nSub < 7:
+        nSub = 7
     nSub = nSub - (1 - nSub%2)
 
     # For each data point

@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import lidarsDrv as lid
 import pylab
 
-
 def disp_menu():
     print('')
     print('----MENU----') 
