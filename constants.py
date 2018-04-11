@@ -21,7 +21,7 @@ boundsDatasLidars = [-400,
 
 # Smooth Factor f optimization
 fMin = 0.02
-fMax = 0.15
+fMax = 0.30
 stepNb = 15
 
 # Nb of datas to retrieve for each lidar in total
@@ -46,7 +46,7 @@ margin_bot = 25
 deadZone = 100
 
 # Clustering constants
-deltaMinClust = 5  # in mm
-aStartClust = 0    # Start value for dichotomy
-bStartClust = 1000 # Start value for dichotomy
-nonNoiseMeas = 0.9 # Minimum fraction of the measurments count considered as ok
+deltaMinClust = 5   # in mm
+aStartClust = 0     # Start value for dichotomy
+bStartClust = 1000  # Start value for dichotomy
+nonNoiseMeas = 0.95 # Minimum fraction of the measurments count considered as ok
