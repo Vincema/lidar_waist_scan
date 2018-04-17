@@ -51,7 +51,7 @@ def center_datas():
     centeredPointsXY = []
     
     for i in range(len(clusteredPointsXY)):
-        centeredPointsXY.append(point(clusteredPointsXY[i].x-origin.x,clusteredPointsXY[i].y-origin.y))
+        centeredPointsXY.append(point(mergedPointsXY[i].x-origin.x,mergedPointsXY[i].y-origin.y))
 
 def get_neighbors(datas,tres,pointIndex,distMatrix):
     neighbors = []
@@ -232,13 +232,17 @@ def find_optimal_smooth_factor():
         print("    Optimisation - Step 1")
         index = 0
         for f in fSeek:
-            print("        Iter " , index+1 , '/' , constants.stepNb)
-            [tmpLoessResults, tmpRobFactor] = loess_regression(tempDatas,f,0,0)
+            print("        f = " , f)
+            #try:
+            [tmpLoessResults, tmpRobFactor] = loess_regression(tempDatas,f,False,False,[])
+            #except:
+            #    pass
             fValues.append(f)
             tmpQuadError = 0
             for i in range(len(distancePoints)):
                 tmpQuadError += (distancePoints[i].dist - tmpLoessResults[i].dist)**2
-            if index > 0 and tmpQuadError > quadError[index-1]:
+            print("            Quadratic error = ",tmpQuadError)
+            if index > 0 and tmpQuadError > quadError[index-1] and False:
                 print("        Mimimum found")
                 break
             else:
@@ -259,13 +263,16 @@ def find_optimal_smooth_factor():
         print("    Optimisation - Step 2")
         index = 0
         for f in fSeek:
-            print("        Iter " , index+1 , '/' , constants.stepNb)
-            [tmpLoessResults, tmpRobFactor] = loess_regression(tempDatas,f,0,1)
+            print("        f = " , f)
+            #try:
+            tmpLoessResults = loess_regression(tempDatas,f,False,True,robFactorF0)
+            #except:
+            #    pass
             fValues.append(f)
             tmpQuadError = 0
             for i in range(len(distancePoints)):
                 tmpQuadError += robFactorF0[i]*((distancePoints[i].dist - tmpLoessResults[i].dist)**2)
-            if index > 0 and tmpQuadError > quadError[index-1]:
+            if index > 0 and tmpQuadError > quadError[index-1] and False:
                 print("        Mimimum found")
                 break
             else:    
@@ -277,10 +284,7 @@ def find_optimal_smooth_factor():
             if quadError[i] < minVal:
                 minVal = quadError[i]
                 smoothFactor[iter] = fValues[i]
-
-        [tmpLoessResults, tmpRobFactor] = loess_regression(distancePoints,smoothFactor[iter],0,1)
-        tempDatas = tmpLoessResults
-
+                
     print("Optimized smooth factor values = " , format(smoothFactor[0],'.3f') , " and " , format(smoothFactor[1],'.3f'))
 
 
@@ -296,8 +300,8 @@ def loess_algorithm():
     # 2 iterations of the loess algorithm
     loessPointsIter1 = []
     loessPointsIter2 = []
-    [loessPointsIter1, robFactor] = loess_regression(distancePoints,smoothFactor[0],1,1)
-    [loessPointsIter2, robFactor] = loess_regression(loessPointsIter1,smoothFactor[1],1,1)
+    [loessPointsIter1, robFactor] = loess_regression(distancePoints,smoothFactor[0],True,True,[])
+    [loessPointsIter2, robFactor] = loess_regression(loessPointsIter1,smoothFactor[1],True,True,[])
     
     plot_distances()
 
@@ -333,21 +337,25 @@ def linear_weighted_reg(X,Y,W,G):
     return [param1,param2]
     
 
-def loess_regression(datas,smoothFact,useYi,useRobust):
+# robustFactors: None to compute them else, a vector array
+def loess_regression(datas,smoothFact,useYi,useRobust=True,robustFactors=[]):
     # Vars init
     robFactor = []
     loessPoints = []
-
+    
     # Number of datas
     nDatas = len(datas)
 
     # Compute the number of points included by the specified span factor
     nSub = math.ceil(smoothFact * nDatas)
     
-    # Make nSub odd if even and =7 if < 7 (It makes no sense to run loess on so few points)
-    if nSub < 7:
-        nSub = 7
+    # Make nSub odd if even and =15 if < 15 (It makes no sense to run loess on so few points)
+    if nSub < 15:
+        nSub = 15
     nSub = nSub - (1 - nSub%2)
+    subParametersDist = np.zeros((nDatas,nSub))
+    subParametersAngle = np.zeros((nDatas,nSub))
+    subParametersAngleWeight = np.zeros((nDatas,nSub))
 
     # For each data point
     for curPoint in range(nDatas):
@@ -368,28 +376,19 @@ def loess_regression(datas,smoothFact,useYi,useRobust):
             # Update the index of subArray
             k = (k+1)%nDatas
 
-        # Compute robust weighted regression
-        subDistWeight = []
-        tempSubDist = subDist[:]
-        if useYi == 0:
-            tempSubDist.pop(int(np.floor(nSub/2)))  # Remove Yi for median and mean equation if not taken in account
-        meanDist = np.mean(tempSubDist)
-        medianErrToMEan = np.median(abs(tempSubDist-meanDist))
-        # For each element in subset array
-        for i in range(nSub):
-            errToMean = abs(subDist[i]-meanDist)
-            subDistWeight.append(abs(errToMean/(6*medianErrToMEan)))
-            if subDistWeight[i] >= 1:
-                subDistWeight[i] = 0
-            else:
-                subDistWeight[i] = (1-subDistWeight[i]**2)**2
-
-        # Save the robustness factor for each point
-        robFactor.append(subDistWeight[int(np.floor(nSub/2))])
-
-        # Determine if the user wants to compute the robustess factor
-        if useRobust == 0:
-            subDistWeight = np.ones(nSub)    
+        # Find estimation of each point without the robustness factor at first or with if specified in parameters
+        if useRobust == False or robustFactors == []:
+            subDistWeight = np.ones(nSub)
+        else:
+            # For each element in subset array
+            k = indMinSub
+            subDistWeight = []
+            for i in range(nSub):
+                # Save the robustness factors value
+                subDistWeight.append(robustFactors[k])
+                # Update the index of subArray
+                k = (k+1)%nDatas
+        
 
         # Compute the maximum relative angle between the current point and the points in the subset
         rangeAngle = []
@@ -409,18 +408,81 @@ def loess_regression(datas,smoothFact,useYi,useRobust):
             k = (k+1)%nDatas
 
         # If the current y should not be taken into account 
-        if useYi == 0:
+        if useYi == False:
             # Null weight on the current point
             subAngleWeight[int(np.floor(nSub/2))] = 0
 
         # Get the parameters of the linear regressions for the current point 
         parameters = linear_weighted_reg(subAngle,subDist,subAngleWeight,subDistWeight)
+        subParametersAngle[curPoint] = subAngle
+        subParametersDist[curPoint] = subDist
+        subParametersAngleWeight[curPoint] = subAngleWeight
 
         # Compute the new points
         angle = datas[curPoint].alpha
         dist = datas[curPoint].alpha*parameters[0] + parameters[1]
         loessPoints.append(distAngleData(alpha=angle,dist=dist))
-    return [loessPoints,robFactor]
+      
+    
+    if robustFactors == []:
+        robustFactors = []
+        weightedLoessPoints = []
+        # For each data point
+        for curPoint in range(nDatas):
+            # Compute the min and max indexes surrounding the span window 
+            indMinSub = int((curPoint-np.floor(nSub/2))%nDatas)
+            indMaxSub = int((curPoint+np.floor(nSub/2))%nDatas)
+
+            # For each element in subset array
+            k = indMinSub
+            subResiduals = []
+            for i in range(nSub):
+                # Save the residuals of the subset
+                subResiduals.append(abs(datas[k].dist - loessPoints[k].dist))
+                # Update the index of subArray
+                k = (k+1)%nDatas  
+          
+            # Remove Yi for median if not taken in account
+            if useYi == False:
+                subResiduals.pop(int(np.floor(nSub/2))) 
+                
+            medianResiduals = np.median(subResiduals)
+            x = abs(datas[curPoint].dist - loessPoints[curPoint].dist) / (6*medianResiduals)
+            if x >= 1:
+                y = 0
+            else:
+                y = (1-x**2)**2 
+            
+            robustFactors.append(y)
+        
+        # For each data point
+        for curPoint in range(nDatas):
+            # Compute the min and max indexes surrounding the span window 
+            indMinSub = int((curPoint-np.floor(nSub/2))%nDatas)
+            indMaxSub = int((curPoint+np.floor(nSub/2))%nDatas)
+            
+            # For each element in subset array
+            k = indMinSub
+            subDistWeight = []
+            for i in range(nSub):
+                # Save the robust factor
+                subDistWeight.append(robustFactors[k])
+                # Update the index of subArray
+                k = (k+1)%nDatas  
+            
+            parameters = linear_weighted_reg(subParametersAngle[curPoint],subParametersDist[curPoint],subParametersAngleWeight[curPoint],subDistWeight)
+            
+            # Compute the new points
+            angle = datas[curPoint].alpha
+            dist = datas[curPoint].alpha*parameters[0] + parameters[1]
+            weightedLoessPoints.append(distAngleData(alpha=angle,dist=dist))
+        
+        if useRobust == False:
+            return [loessPoints,robustFactors]
+        else:
+            return [weightedLoessPoints,robustFactors]  
+    else:
+        return loessPoints
 
 
 def compute_circumference():
