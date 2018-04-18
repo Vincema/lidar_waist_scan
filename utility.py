@@ -162,7 +162,7 @@ def fit_circle(datas):
     
 def is_useful_data(pointXYZ):
     # Is in the circle of 75% of the radius of the outter circle formed by the lidars 
-    if math.sqrt(pointXYZ.x**2 + pointXYZ.y**2) <= (0.75 * constants.lidarsDist):
+    if math.sqrt(pointXYZ.x**2 + pointXYZ.y**2) <= (constants.lidarsDist-constants.deadZone):
         # Is at the good height
         if pointXYZ.z >= patientHeight-constants.margin_bot and pointXYZ.z <= patientHeight+constants.margin_top:
             return True
@@ -272,6 +272,7 @@ def find_optimal_smooth_factor():
             tmpQuadError = 0
             for i in range(len(distancePoints)):
                 tmpQuadError += robFactorF0[i]*((distancePoints[i].dist - tmpLoessResults[i].dist)**2)
+            print("            Quadratic error = ",tmpQuadError)
             if index > 0 and tmpQuadError > quadError[index-1] and False:
                 print("        Mimimum found")
                 break
@@ -284,7 +285,9 @@ def find_optimal_smooth_factor():
             if quadError[i] < minVal:
                 minVal = quadError[i]
                 smoothFactor[iter] = fValues[i]
-                
+        
+        [tmpLoessResults, tmpRobFactor] = loess_regression(distancePoints,smoothFactor[iter],0,1)
+        tempDatas = tmpLoessResults
     print("Optimized smooth factor values = " , format(smoothFactor[0],'.3f') , " and " , format(smoothFactor[1],'.3f'))
 
 
