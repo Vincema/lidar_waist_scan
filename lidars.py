@@ -136,32 +136,27 @@ class setOfLidars:
     def compute_raw_datas(self):
         global mergedPointsXY
         global centeredPointsXY
-        global distancePoints
-        utility.distancePoints = []
 
         # Keep only the datas that are close t the origin
         utility.mergedPointsXY = []
         utility.centeredPointsXY = []
+        x = []
+        y = []
         for i in range(3):
             for j in range(len(self.lidarsSet[i].pointDatas)):
                 if utility.is_useful_data(utility.point(self.lidarsSet[i].pointDatas[j].x,self.lidarsSet[i].pointDatas[j].y,self.lidarsSet[i].pointDatas[j].z)):
-                    utility.mergedPointsXY.append(utility.point(self.lidarsSet[i].pointDatas[j].x,self.lidarsSet[i].pointDatas[j].y))
-        # Center the datas according to a circle fitting
-        utility.center_datas()
+                    temp_x = self.lidarsSet[i].pointDatas[j].x
+                    temp_y = self.lidarsSet[i].pointDatas[j].y
+                    # Remove duplicates
+                    if temp_x not in x or temp_y not in y:
+                        x.append(self.lidarsSet[i].pointDatas[j].x)
+                        y.append(self.lidarsSet[i].pointDatas[j].y)
+                    
+        for i in range(len(x)):           
+            utility.mergedPointsXY.append(utility.point(x[i],y[i]))
 
         # Plot the merged/centered points
         self.plot_merged_datas()
-
-        # Compute the angle and distance of the points from the origin (and sort them)
-        tempPoints1 = []
-        tempPoints2 = []
-        for i in range(len(utility.centeredPointsXY)):
-            dist = math.sqrt(utility.centeredPointsXY[i].x**2 + utility.centeredPointsXY[i].y**2)
-            angle = (math.atan2(utility.centeredPointsXY[i].y,utility.centeredPointsXY[i].x) * 180 / math.pi) + 180
-            tempPoints1.append(utility.distAngleData(dist=dist,alpha=angle))
-        tempPoints2 = sorted(tempPoints1,key=lambda utility:utility.alpha)
-        for i in range(len(tempPoints2)):
-            utility.distancePoints.append(tempPoints2[i])  
         
         
                                       
