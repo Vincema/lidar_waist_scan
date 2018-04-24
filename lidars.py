@@ -35,6 +35,9 @@ class lidarInfos:
             y = dist*((c1*s3)+(c2*c3*s1)) + self.position.y
             z = dist*(-1)*(c3*s2) + self.position.z
             self.pointDatas.append(utility.point(x,y,z))
+            # DEBUG
+            for j in range(3):
+                self.pointDatas.append(utility.point(x+np.random.rand()*5-2.5,y+np.random.rand()*5-2.5,z))
             
         # Save patient's height
         utility.patientHeight = patientHeight

@@ -43,7 +43,7 @@ margin_top = 25
 margin_bot = 25
 
 # Size of the zone from the lidar where measurement can't be performed (mm)
-deadZone = 150
+deadZone = 170
 
 # Clustering constants
 deltaMinClust = 5   # Distance precision stop condition in mm

@@ -4,6 +4,9 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import spatial
+from scipy import cluster
+
 
 # Misc data arrays
 mergedPointsXY = []
@@ -17,12 +20,10 @@ patientHeight = 0
 
 # Misc variables
 circum = 0
-smoothFactor = [None, None]
 
 # Figures
 figRaw = 1
 figMerge = 2
-figDistances = 3
 
 
 class point:
@@ -38,454 +39,13 @@ class distAngleData:
         self.alpha = alpha
 
 
-# Center datas and remove outliers
-def center_datas():
-    global mergedPointsXY
-
-    global clusteredPointsXY
-    clusteredPointsXY = clustering(mergedPointsXY)
-
-    origin = fit_circle(clusteredPointsXY)
-    
-    global centeredPointsXY
-    centeredPointsXY = []
-    
-    for i in range(len(clusteredPointsXY)):
-        centeredPointsXY.append(point(mergedPointsXY[i].x-origin.x,mergedPointsXY[i].y-origin.y))
-
-def get_neighbors(datas,tres,pointIndex,distMatrix):
-    neighbors = []
-    for i in range(len(datas)):
-        if pointIndex != i:
-            if distMatrix[pointIndex][i] < tres:
-                neighbors.append(i)
-    return neighbors
-
-
-# Clustering points to remove outliers (DBSCAN method)
-def clustering(datas):
-    ptMin = math.floor(constants.nonNoiseMeas*len(datas))
-    a = constants.aStartClust 
-    b = constants.bStartClust
-    nbInliers = 0
-    
-    distMatrix = np.zeros((len(datas),len(datas)))
-    for i in range(len(datas)):
-        for j in range(i,len(datas)):
-            dist = math.sqrt((datas[i].x-datas[j].x)**2 + (datas[i].y-datas[j].y)**2)
-            distMatrix[i][j] = dist
-            distMatrix[j][i] = dist
-    
-    while b-a > constants.deltaMinClust:
-        eps = a+((b-a)/2)
-        
-        # -1: Undefined
-        # 0: Noise
-        # >0: Cluster NB
-        pointLabel = []
-        clust = 0
-        
-        for i in range(len(datas)):
-            pointLabel.append(-1)
-        
-        for i in range(len(datas)):
-            if pointLabel[i] == -1:
-                neighbors = get_neighbors(datas,eps,i,distMatrix)
-                if len(neighbors) < ptMin:
-                    pointLabel[i] = 0
-                else:
-                    clust = clust+1
-                    pointLabel[i] = clust
-                    seedSet = []
-                    for j in range(len(neighbors)):
-                        seedSet.append(neighbors[j])
-                    for j in seedSet:
-                        if pointLabel[j] == 0:
-                            pointLabel[j] = clust
-                        if pointLabel[j] == -1:
-                            pointLabel[j] = clust
-                            neighbors = get_neighbors(datas,eps,i,distMatrix)
-                            if len(neighbors) >= ptMin:
-                                for k in range(len(neighbors)):
-                                    seedSet.append(neighbors[k])
-                            
-        nbInliers=0
-        for i in range(len(datas)):
-            if pointLabel[i] != 0:
-                nbInliers += 1
-        if nbInliers < ptMin:
-            a = eps
-        else:
-            b = eps
-            tempPointLabel = pointLabel
-            
-    newDatas = []
-    for i in range(len(datas)):
-        if tempPointLabel[i] != 0:
-            newDatas.append(datas[i])
-    
-    return newDatas
-            
-
-# Circle fitting
-def fit_circle(datas):
-    n = len(datas)
-    x = []
-    y = []
-    xSquare = []
-    ySquare = []
-    xTimey = []
-    xSquareTimey = []
-    xTimeySquare = []
-    xCube = []
-    yCube = []
-    for i in range(n):
-        x.append(datas[i].x)
-        y.append(datas[i].y)
-        xSquare.append(datas[i].x**2)
-        ySquare.append(datas[i].y**2)
-        xTimey.append(datas[i].x*datas[i].y)
-        xSquareTimey.append(datas[i].x**2 * datas[i].y)
-        xTimeySquare.append(datas[i].x * datas[i].y**2)
-        xCube.append(datas[i].x**3)
-        yCube.append(datas[i].y**3)
-    
-    # Least squares method
-    A = n*sum(xSquare) - sum(x)**2
-    B = n*sum(xTimey) - sum(x)*sum(y)
-    C = n*sum(ySquare) - sum(y)**2
-    D = 0.5 * (n*sum(xTimeySquare) - sum(x)*sum(ySquare) + n*sum(xCube) - sum(xSquare)*sum(x))
-    E = 0.5 * (n*sum(xSquareTimey) - sum(y)*sum(xSquare) + n*sum(yCube) - sum(ySquare)*sum(y))
-    origin = point((D*C - B*E)/(A*C - B**2) , (A*E - B*D)/(A*C - B**2))
-    return origin
-
-    
 def is_useful_data(pointXYZ):
     # Is in the circle of 75% of the radius of the outter circle formed by the lidars 
     if math.sqrt(pointXYZ.x**2 + pointXYZ.y**2) <= (constants.lidarsDist-constants.deadZone):
         # Is at the good height
         if pointXYZ.z >= patientHeight-constants.margin_bot and pointXYZ.z <= patientHeight+constants.margin_top:
             return True
-    
     return False
-
-
-def plot_distances():
-    global distancePoints
-    global loessPointsIter1
-    global loessPointsIter2
-
-    plt.figure(figDistances)
-    plt.title('Distance from origin')
-    plt.xlabel('Angle (deg)')
-    plt.ylabel('Distance from origin (mm)')
-    
-    distancePointsX = []
-    distancePointsY = []
-    loessPointsIter1X = []
-    loessPointsIter1Y = []
-    loessPointsIter2X = []
-    loessPointsIter2Y = []
-    for i in range(len(distancePoints)):
-        distancePointsX.append(distancePoints[i].alpha)
-        distancePointsY.append(distancePoints[i].dist)
-        loessPointsIter1X.append(loessPointsIter1[i].alpha)
-        loessPointsIter1Y.append(loessPointsIter1[i].dist)
-        loessPointsIter2X.append(loessPointsIter2[i].alpha)
-        loessPointsIter2Y.append(loessPointsIter2[i].dist)
-    plt.plot(distancePointsX,distancePointsY,'b-',label='Raw datas',ms=2)
-    plt.plot(loessPointsIter1X,loessPointsIter1Y,'g-',label='LOESS points iter 1',ms=2)
-    plt.plot(loessPointsIter2X,loessPointsIter2Y,'r-',label='LOESS points iter 2',ms=2)
-    plt.legend()
-
-
-def plot_results_loess():
-    global loessResultXY
-    
-    plt.figure(figMerge)
-
-    loessResultX = []
-    loessResultY = []
-    for i in range(len(loessResultXY)):
-        loessResultX.append(loessResultXY[i].x)
-        loessResultY.append(loessResultXY[i].y)
-    plt.plot(loessResultX,loessResultY,'r-',label='Smoothed points after LOESS reg',ms=2)
-    plt.legend()
-
-
-def find_optimal_smooth_factor():
-    global distancePoints
-    n = len(distancePoints)
-    global smoothFactor
-    
-    fSeek = []
-    fSeek = np.linspace(constants.fMin,constants.fMax,constants.stepNb)
-
-    tempDatas = distancePoints
-    
-    for iter in range(2):
-        print("Optimisation - Iter ",iter+1)
-        tmpLoessResults = []
-        fValues = []
-        quadError = []
-        robFactor = []
-        print("    Optimisation - Step 1")
-        index = 0
-        for f in fSeek:
-            print("        f = " , f)
-            #try:
-            [tmpLoessResults, tmpRobFactor] = loess_regression(tempDatas,f,False,False,[])
-            #except:
-            #    pass
-            fValues.append(f)
-            tmpQuadError = 0
-            for i in range(len(distancePoints)):
-                tmpQuadError += (distancePoints[i].dist - tmpLoessResults[i].dist)**2
-            print("            Quadratic error = ",tmpQuadError)
-            if index > 0 and tmpQuadError > quadError[index-1] and False:
-                print("        Mimimum found")
-                break
-            else:
-                quadError.append(tmpQuadError)
-                robFactor.append(tmpRobFactor)
-                index += 1
-
-        minVal = np.inf
-        for i in range(len(quadError)):
-            if quadError[i] < minVal:
-                minVal = quadError[i]
-                f0 = fValues[i]
-                robFactorF0 = robFactor[i]
-
-        tmpLoessResults = []
-        fValues = []
-        quadError = []
-        print("    Optimisation - Step 2")
-        index = 0
-        for f in fSeek:
-            print("        f = " , f)
-            #try:
-            tmpLoessResults = loess_regression(tempDatas,f,False,True,robFactorF0)
-            #except:
-            #    pass
-            fValues.append(f)
-            tmpQuadError = 0
-            for i in range(len(distancePoints)):
-                tmpQuadError += robFactorF0[i]*((distancePoints[i].dist - tmpLoessResults[i].dist)**2)
-            print("            Quadratic error = ",tmpQuadError)
-            if index > 0 and tmpQuadError > quadError[index-1] and False:
-                print("        Mimimum found")
-                break
-            else:    
-                quadError.append(tmpQuadError)
-                index += 1
-     
-        minVal = np.inf
-        for i in range(len(quadError)):
-            if quadError[i] < minVal:
-                minVal = quadError[i]
-                smoothFactor[iter] = fValues[i]
-        
-        [tmpLoessResults, tmpRobFactor] = loess_regression(distancePoints,smoothFactor[iter],0,1)
-        tempDatas = tmpLoessResults
-    print("Optimized smooth factor values = " , format(smoothFactor[0],'.3f') , " and " , format(smoothFactor[1],'.3f'))
-
-
-def loess_algorithm():
-    global distancePoints
-    global loessPointsIter1
-    loessPointsIter1 = []
-    global loessPointsIter2
-    loessPointsIter2 = []
-    global loessResultXY
-    loessResultXY = []          
-
-    # 2 iterations of the loess algorithm
-    loessPointsIter1 = []
-    loessPointsIter2 = []
-    [loessPointsIter1, robFactor] = loess_regression(distancePoints,smoothFactor[0],True,True,[])
-    [loessPointsIter2, robFactor] = loess_regression(loessPointsIter1,smoothFactor[1],True,True,[])
-    
-    plot_distances()
-
-    # Compute and plot results of the loess reg on XY 
-    for i in range(len(loessPointsIter2)):
-        x = loessPointsIter2[i].dist * math.cos((loessPointsIter2[i].alpha - 180)*math.pi/180) 
-        y = loessPointsIter2[i].dist * math.sin((loessPointsIter2[i].alpha - 180)*math.pi/180)
-        loessResultXY.append(point(x,y))
-    loessResultXY.append(loessResultXY[0]) # To close the shape
-    plot_results_loess()
-
-
-def linear_weighted_reg(X,Y,W,G):
-    # Number of points
-    nbPoints = len(X)
-
-    # Computing the equation (least squares min)
-    i = list(range(nbPoints))
-    
-    WG = list(map(lambda x: W[x] * G[x], i))    # Replace the loop/append because this function is called many time
-    WGX = list(map(lambda x: WG[x] * X[x], i))
-    WGY = list(map(lambda x: WG[x] * Y[x], i))
-
-    mX = sum(WGX)/sum(WG)
-    mY = sum(WGY)/sum(WG)
-
-    num = list(map(lambda x: WG[x] * (X[x]-mX) * (Y[x]-mY), i))
-    den = list(map(lambda x: WG[x] * (X[x]-mX)**2, i))
-        
-    param1 = sum(num)/sum(den)
-    param2 = mY - mX*param1
-    
-    return [param1,param2]
-    
-
-# robustFactors: None to compute them else, a vector array
-def loess_regression(datas,smoothFact,useYi,useRobust=True,robustFactors=[]):
-    # Vars init
-    robFactor = []
-    loessPoints = []
-    
-    # Number of datas
-    nDatas = len(datas)
-
-    # Compute the number of points included by the specified span factor
-    nSub = math.ceil(smoothFact * nDatas)
-    
-    # Make nSub odd if even and =15 if < 15 (It makes no sense to run loess on so few points)
-    if nSub < 15:
-        nSub = 15
-    nSub = nSub - (1 - nSub%2)
-    subParametersDist = np.zeros((nDatas,nSub))
-    subParametersAngle = np.zeros((nDatas,nSub))
-    subParametersAngleWeight = np.zeros((nDatas,nSub))
-
-    # For each data point
-    for curPoint in range(nDatas):
-        # Compute the min and max indexes surrounding the span window 
-        indMinSub = int((curPoint-np.floor(nSub/2))%nDatas)
-        indMaxSub = int((curPoint+np.floor(nSub/2))%nDatas)
-
-        # For each element in subset array
-        k = indMinSub
-        subAngle = []
-        subDist = []
-        for i in range(nSub):
-            # Define the new angle to avoid discontinuities between 0 and 360 degrees
-            diffAngle = ((datas[k].alpha - datas[curPoint].alpha+180)%360)-180
-            subAngle.append(datas[curPoint].alpha + diffAngle)
-            # Save the distance value
-            subDist.append(datas[k].dist)
-            # Update the index of subArray
-            k = (k+1)%nDatas
-
-        # Find estimation of each point without the robustness factor at first or with if specified in parameters
-        if useRobust == False or robustFactors == []:
-            subDistWeight = np.ones(nSub)
-        else:
-            # For each element in subset array
-            k = indMinSub
-            subDistWeight = []
-            for i in range(nSub):
-                # Save the robustness factors value
-                subDistWeight.append(robustFactors[k])
-                # Update the index of subArray
-                k = (k+1)%nDatas
-        
-
-        # Compute the maximum relative angle between the current point and the points in the subset
-        rangeAngle = []
-        for i in range(len(subAngle)):
-            rangeAngle.append(abs((datas[curPoint].alpha - subAngle[i] + 180)%360 - 180)) 
-        maxRange = max(rangeAngle)
-
-        # For each element in subset array
-        k = indMinSub
-        subAngleWeight = []
-        for i in range(nSub):
-            # Distance weight
-            angleDiff = abs((datas[curPoint].alpha - subAngle[i] + 180)%360 - 180)
-            scaledDist = angleDiff/maxRange
-            subAngleWeight.append((1-scaledDist**3)**3)
-            # Update the index of subArray
-            k = (k+1)%nDatas
-
-        # If the current y should not be taken into account 
-        if useYi == False:
-            # Null weight on the current point
-            subAngleWeight[int(np.floor(nSub/2))] = 0
-
-        # Get the parameters of the linear regressions for the current point 
-        parameters = linear_weighted_reg(subAngle,subDist,subAngleWeight,subDistWeight)
-        subParametersAngle[curPoint] = subAngle
-        subParametersDist[curPoint] = subDist
-        subParametersAngleWeight[curPoint] = subAngleWeight
-
-        # Compute the new points
-        angle = datas[curPoint].alpha
-        dist = datas[curPoint].alpha*parameters[0] + parameters[1]
-        loessPoints.append(distAngleData(alpha=angle,dist=dist))
-      
-    
-    if robustFactors == []:
-        robustFactors = []
-        weightedLoessPoints = []
-        # For each data point
-        for curPoint in range(nDatas):
-            # Compute the min and max indexes surrounding the span window 
-            indMinSub = int((curPoint-np.floor(nSub/2))%nDatas)
-            indMaxSub = int((curPoint+np.floor(nSub/2))%nDatas)
-
-            # For each element in subset array
-            k = indMinSub
-            subResiduals = []
-            for i in range(nSub):
-                # Save the residuals of the subset
-                subResiduals.append(abs(datas[k].dist - loessPoints[k].dist))
-                # Update the index of subArray
-                k = (k+1)%nDatas  
-          
-            # Remove Yi for median if not taken in account
-            if useYi == False:
-                subResiduals.pop(int(np.floor(nSub/2))) 
-                
-            medianResiduals = np.median(subResiduals)
-            x = abs(datas[curPoint].dist - loessPoints[curPoint].dist) / (6*medianResiduals)
-            if x >= 1:
-                y = 0
-            else:
-                y = (1-x**2)**2 
-            
-            robustFactors.append(y)
-        
-        # For each data point
-        for curPoint in range(nDatas):
-            # Compute the min and max indexes surrounding the span window 
-            indMinSub = int((curPoint-np.floor(nSub/2))%nDatas)
-            indMaxSub = int((curPoint+np.floor(nSub/2))%nDatas)
-            
-            # For each element in subset array
-            k = indMinSub
-            subDistWeight = []
-            for i in range(nSub):
-                # Save the robust factor
-                subDistWeight.append(robustFactors[k])
-                # Update the index of subArray
-                k = (k+1)%nDatas  
-            
-            parameters = linear_weighted_reg(subParametersAngle[curPoint],subParametersDist[curPoint],subParametersAngleWeight[curPoint],subDistWeight)
-            
-            # Compute the new points
-            angle = datas[curPoint].alpha
-            dist = datas[curPoint].alpha*parameters[0] + parameters[1]
-            weightedLoessPoints.append(distAngleData(alpha=angle,dist=dist))
-        
-        if useRobust == False:
-            return [loessPoints,robustFactors]
-        else:
-            return [weightedLoessPoints,robustFactors]  
-    else:
-        return loessPoints
 
 
 def compute_circumference():
@@ -501,9 +61,501 @@ def compute_circumference():
     print('\nCircumference: ',format(circum, '.2f'),'mm')
 
 
+def get_neighbor_vertices(tri,vertNb):
+    n1 = tri.vertex_neighbor_vertices[0][vertNb]
+    n2 = tri.vertex_neighbor_vertices[0][vertNb+1]
+    return tri.vertex_neighbor_vertices[1][n1:n2]
 
 
+def average_sampling_radius(points):
+    n = len(points)
+    print("hello1")
+    tri_points = spatial.Delaunay(points)
+    
+    # Lenght of the max edge lenght for each vertex 
+    max_dist_vertices = []
+    d_max = []
+    for i in range(n):
+        neighbors = get_neighbor_vertices(tri_points,i)
+        dist_neighbors = []
+        for j in neighbors:
+            dist = math.sqrt((points[i][0]-points[j][0])**2 + (points[i][1]-points[j][1])**2)
+            dist_neighbors.append(dist)
+        d_max.append(np.max(dist_neighbors))
+
+    print(np.sum(d_max)/n)
+    print("hello2")
+    return np.sum(d_max)/n
+    
+
+class unit:
+    def __init__(self,coordinates,size,i,j):
+        self.coord = coordinates
+        self.size = size
+        self.i = i
+        self.j = j
+        self.points = []
+        self.pts_cnt = 0
+        self.handled = False
+        
+    def add_point(self,point):
+        self.pts_cnt += 1
+        self.points.append(point)
+                
+
+class subgrid:
+    def __init__(self,grid,imin,imax,jmin,jmax):
+        self.imin = imin
+        self.imax = imax
+        self.jmin = jmin
+        self.jmax = jmax
+        self.bound_open = []
+        self.barycenter = []
+        self.bound_open = [True,True,True,True]
+        self.set_bound_close(grid)
+        self.locked_bound = ''
+    
+    def extend(self,bound,grid,cnt=1):
+        if bound == 'l':
+            self.imin -= int(np.floor(cnt))
+        elif bound == 'r':
+            self.imax += int(np.floor(cnt))
+        elif bound == 'u':
+            self.jmax += int(np.floor(cnt))
+        elif bound == 'd':
+            self.jmin -= int(np.floor(cnt))
+        self.set_bound_close(grid)
+        
+    def retract(self,bound,grid,cnt=1):
+        if bound == 'l':
+            self.imin += int(np.floor(cnt))
+        elif bound == 'r':
+            self.imax -= int(np.floor(cnt))
+        elif bound == 'u':
+            self.jmax -= int(np.floor(cnt))
+        elif bound == 'd':
+            self.jmin += int(np.floor(cnt))
+        self.set_bound_close(grid)
+    
+    def pts_cnt_subgrid(self,grid):
+        pts_cnt = 0
+        for i in range(self.imin,self.imax+1):
+            for j in range(self.jmin,self.jmax+1):
+                pts_cnt += grid.units[i][j].pts_cnt
+        return pts_cnt
+        
+    def set_bound_close(self,grid):
+        # UP
+        valueA = valueB = False
+        for i in range(self.imin,self.imax+1):
+            if grid.units[i][self.jmax].handled:
+                valueA = True
+            if grid.units[i][self.jmax].pts_cnt > 0:
+                valueB = True
+        if valueA or (not valueB):
+            self.bound_open[0] = False
+        else:
+            self.bound_open[0] = True
+
+        # DOWN
+        valueA = valueB = False
+        for i in range(self.imin,self.imax+1):
+            if grid.units[i][self.jmin].handled:
+                valueA = True
+            if grid.units[i][self.jmin].pts_cnt > 0:
+                valueB = True
+        if valueA or (not valueB):
+            self.bound_open[1] = False
+        else:
+            self.bound_open[1] = True
+
+        # LEFT
+        valueA = valueB = False
+        for j in range(self.jmin,self.jmax+1):
+            if grid.units[self.imin][j].handled:
+                valueA = True
+            if grid.units[self.imin][j].pts_cnt > 0:
+                valueB = True
+        if valueA or (not valueB):
+            self.bound_open[2] = False
+        else:
+            self.bound_open[2] = True
+
+        # RIGHT
+        valueA = valueB = False
+        for j in range(self.jmin,self.jmax+1):
+            if grid.units[self.imax][j].handled:
+                valueA = True
+            if grid.units[self.imax][j].pts_cnt > 0:
+                valueB = True
+        if valueA or (not valueB):
+            self.bound_open[3] = False
+        else:
+            self.bound_open[3] = True
+    
+    def compute_barycenter(self,grid):
+        pts_cnt = 0
+        pts = []
+        for i in range(self.imin,self.imax+1):
+            for j in range(self.jmin,self.jmax+1):
+                pts_cnt += grid.units[i][j].pts_cnt
+                for k in range(grid.units[i][j].pts_cnt):
+                    pts.append(grid.units[i][j].points[k])
+        self.barycenter = barycenter(pts,pts_cnt)
+        
+    def set_handled_datas(self,grid):
+        for i in range(self.imin,self.imax+1):
+            for j in range(self.jmin,self.jmax+1):
+                grid.units[i][j].handled = True
+    
+    def getting_bigger(self,grid):
+        if self.bound_open[0] and self.locked_bound != 'u':
+            self.extend('u',grid)
+        if self.bound_open[1] and self.locked_bound != 'd':
+            self.extend('d',grid)
+        if self.bound_open[2] and self.locked_bound != 'l':
+            self.extend('l',grid)
+        if self.bound_open[3] and self.locked_bound != 'r':
+            self.extend('r',grid)   
+        
+    def first_join(self,grid):
+        stop = False
+        while stop == False:
+            stop = False
+            closed_bounds = 0
+            for i in self.bound_open:
+                if i == False:
+                    closed_bounds += 1
+            if closed_bounds >= 2:
+                stop = True
+
+            bounds_lenght = [self.imax - self.imin + 1, self.jmax - self.jmin + 1]
+            longest_bound_lenght = np.max(bounds_lenght)
+            if longest_bound_lenght > 10:
+                stop = True
+            self.getting_bigger(grid)
+            
+        self.compute_barycenter(grid)
+        
+    def join_cycle(self,grid,width):
+        while True:            
+            stopW = False
+            bounds_lenght = [(self.imax - self.imin + 1)*grid.units[0][0].size, (self.jmax - self.jmin + 1)*grid.units[0][0].size]
+            longest_bound_lenght = np.max(bounds_lenght)
+            if longest_bound_lenght > width:
+                stopW = True
 
 
+            stopU = not self.bound_open[0]
+            stopD = not self.bound_open[1]
+            stopL = not self.bound_open[2]
+            stopR = not self.bound_open[3]
+            if (stopU and stopD) or (stopL and stopR) or stopW:
+                print(stopU,stopD,stopL,stopR,stopW)
+                break
+                
+            self.getting_bigger(grid)
+
+            # Stop condition
+            closed_bounds = 0
+            for i in self.bound_open:
+                if i == False:
+                    closed_bounds += 1
+            if closed_bounds >= 3:
+                print(self.bound_open[:])
+                return True
+        
+        self.compute_barycenter(grid)
+        self.set_handled_datas(grid)
+        return False
+
+    def retract_until_all_bounds_open(self,grid):
+        stopI = stopJ = False
+        while False in self.bound_open:
+            for i in range(4):
+                if self.jmax > self.jmin:
+                    if i == 0 and not self.bound_open[0]:
+                        self.retract('u',grid)
+                    if i == 1 and not self.bound_open[1]:
+                        self.retract('d',grid)
+                else:
+                    stopJ = True
+                                               
+                if self.imax > self.imin:
+                    if i == 2 and not self.bound_open[2]:
+                        self.retract('l',grid)
+                    if i == 3 and not self.bound_open[3]:
+                        self.retract('r',grid)
+                else:
+                    stopI = True
+                if stopI and stopJ:
+                    print("bisous")
+                    return False
+        return True
+
+    
+    def get_neighbor(self,grid):
+        subg_width = self.imax - self.imin + 1
+        subg_height = self.jmax - self.jmin + 1
+
+        maximum = 0
+        # UP
+        if self.bound_open[0] == True and self.locked_bound != 'u':
+            subgU = subgrid(grid, self.imin, self.imax, self.jmax+1, self.jmax+subg_height)
+            cnt = subgU.pts_cnt_subgrid(grid)
+            if cnt > maximum:
+                maximum = cnt
+                subgU.locked_bound = 'd'
+                if not subgU.retract_until_all_bounds_open(grid):
+                    return None
+                l1 = subgU.imax - subgU.imin + 1
+                l2 = subgU.jmax - subgU.jmin + 1
+                subgU.retract('u',grid,l2/2)
+                subgU.retract('l',grid,l1/4)
+                subgU.retract('r',grid,l1/4)
+                neigh = subgU
+                print("u")
+
+        # DOWN
+        if self.bound_open[1] == True and self.locked_bound != 'd':    
+            subgD = subgrid(grid, self.imin, self.imax, self.jmin-subg_height, self.jmin-1)
+            cnt = subgD.pts_cnt_subgrid(grid)
+            if cnt > maximum:
+                maximum = cnt
+                subgD.locked_bound = 'u'
+                if not subgD.retract_until_all_bounds_open(grid):
+                    return None
+                l1 = subgD.imax - subgD.imin + 1
+                l2 = subgD.jmax - subgD.jmin + 1
+                subgD.retract('d',grid,l2/2)
+                subgD.retract('l',grid,l1/4)
+                subgD.retract('r',grid,l1/4)
+                neigh = subgD
+                print("d")
+
+        # LEFT
+        if self.bound_open[2] == True and self.locked_bound != 'l': 
+            subgL = subgrid(grid, self.imin-subg_width, self.imin-1, self.jmin, self.jmax)
+            cnt = subgL.pts_cnt_subgrid(grid)
+            if cnt > maximum:
+                maximum = cnt
+                subgL.locked_bound = 'r'
+                if not subgL.retract_until_all_bounds_open(grid):
+                    return None
+                l1 = subgL.jmax - subgL.jmin + 1
+                l2 = subgL.imax - subgL.imin + 1
+                subgL.retract('l',grid,l2/2)
+                subgL.retract('u',grid,l1/4)
+                subgL.retract('d',grid,l1/4)
+                neigh = subgL
+                print("l")
+
+        # RIGHT
+        if self.bound_open[3] == True and self.locked_bound != 'r': 
+            subgR = subgrid(grid, self.imax+1, self.imax+subg_width, self.jmin, self.jmax)
+            cnt = subgR.pts_cnt_subgrid(grid)
+            if cnt > maximum:
+                maximum = cnt
+                subgR.locked_bound = 'l'
+                if not subgR.retract_until_all_bounds_open(grid):
+                    return None
+                l1 = subgR.jmax - subgR.jmin + 1
+                l2 = subgR.imax - subgR.imin + 1
+                subgR.retract('r',grid,l2/2)
+                subgR.retract('u',grid,l1/4)
+                subgR.retract('d',grid,l1/4)
+                neigh = subgR
+                print("r")
+        print("ok")
+
+        print(neigh.imin,neigh.imax,neigh.jmin,neigh.jmax)
+        print(neigh.bound_open)
+        return neigh
+    
+        
+class global_grid:
+    def __init__(self,asr,points):
+        self.global_grid = []
+        self.asr = asr
+        self.units = []
+        
+        grid_size = 2*(constants.lidarsDist + (asr-(constants.lidarsDist%asr)))
+        nb_unit_per_row = int(grid_size/asr)
+
+        self.imin = 0
+        self.imax = -1
+        self.jmin = 0
+        self.jmax = -1
+    
+        x_pos = -grid_size/2 + asr/2
+        for i in range(nb_unit_per_row):
+            self.imax += 1
+            row = []
+            self.jmax = -1
+            y_pos = -grid_size/2 + asr/2
+            for j in range(nb_unit_per_row):
+                self.jmax += 1
+                row.append(unit([x_pos,y_pos],asr,i,j))
+                y_pos += asr
+            self.units.append(row)
+            x_pos += asr
+
+        origin = [self.units[self.imin][self.jmin].coord[0]-asr/2, self.units[self.imin][self.jmin].coord[1]-asr/2] 
+        for i in range(len(points)):
+            temp_i = int(np.floor(((points[i][0]-origin[0])/grid_size) * (self.imax - self.imin + 1))) + self.imin
+            temp_j = int(np.floor(((points[i][1]-origin[1])/grid_size) * (self.jmax - self.jmin + 1))) + self.jmin
+            self.units[temp_i][temp_j].add_point(points[i])
+                    
+   
+        
+def barycenter(points,n=None):
+    if n == None:
+        n = len(points)
+    sum_x = np.sum(list(points[i][0] for i in range(n)))
+    sum_y = np.sum(list(points[i][1] for i in range(n)))
+    return [sum_x/n,sum_y/n]
+
+
+# Globalwidth at P2 for the subgrid 2
+def compute_global_width(grid,subg1,subg2):
+    P1 = subg1.barycenter
+    P2 = subg2.barycenter
+    T = [P2[0]-P1[0], P2[1]-P2[1]]
+    L = [-T[1], T[0]]
+    norm_L = math.sqrt(L[0]**2 + L[1]**2)
+    
+    proj_dist = []
+    for i in range(subg2.imin,subg2.imax+1):
+        for j in range(subg2.jmin,subg2.jmax+1):
+            for k in range(grid.units[i][j].pts_cnt):
+                pt_vect = [grid.units[i][j].points[k][0]-P2[0],grid.units[i][j].points[k][1]-P2[1]]
+                dist = (pt_vect[0] * L[0]/norm_L) + (pt_vect[1] * L[1]/norm_L)
+                proj_dist.append([dist,i,j,k])
+
+    if len(proj_dist) == 1:
+        return math.inf
+
+    maximum = 0
+    minimum = math.inf
+    for m in range(len(proj_dist)):
+        if proj_dist[m][0] > maximum:
+            maximum = proj_dist[m][0]
+            max_i = int(proj_dist[m][1])
+            max_j = int(proj_dist[m][2])
+            max_k = int(proj_dist[m][3])
+        if proj_dist[m][0] < minimum:
+            minimum = proj_dist[m][0]
+            min_i = int(proj_dist[m][1])
+            min_j = int(proj_dist[m][2])
+            min_k = int(proj_dist[m][3])
+
+    width = math.sqrt((grid.units[max_i][max_j].points[max_k][0] - grid.units[min_i][min_j].points[min_k][0])**2
+                    + (grid.units[max_i][max_j].points[max_k][1] - grid.units[min_i][min_j].points[min_k][1])**2)
+    return width
+
+
+"""
+# Clusterize the datas points until all points are clusterized
+def clustering(points):
+    n = len(points)
+    
+    tree = cluster.hierarchy.linkage(points,method='centroid',metric='euclidean')
+    clusters = list([x] for x in range(n))
+    tree_iter = 0
+    
+    # While all points are not in a cluster
+    done = False
+    while done == False:
+        ind0,ind1,dit,nbValues = tree[tree_iter]
+        ind0 = int(ind0)
+        ind1 = int(ind1)
+        tmp_pts0 = clusters[ind0]
+        tmp_pts1 = clusters[ind1]
+        clusters.append(clusters[ind0] + clusters[ind1])
+        clusters[ind0] = []
+        clusters[ind1] = []
+        tree_iter += 1
+        
+        done = True
+        for i in range(n):
+            if clusters[i] != []:
+                done = False
+    
+    tmp_clust = clusters
+    clusters = []
+    clust_coordinates = []
+    for i in range(len(tmp_clust)):
+        if tmp_clust[i] != []:
+            clusters.append(tmp_clust[i])
+            tmp_pts = []
+            for j in range(len(tmp_clust[i])):
+                tmp_pts.append(tmp_clust[i][j])
+            clust_coordinates.append(barycenter(list(points[i] for i in tmp_pts)))    
+    
+    print(clusters)
+    print(clust_coordinates)
+"""
+
+def joining_scheme(grid,points):
+    # Find the fisrt feature unit (minimum i)
+    stop = False
+    for i in range(grid.imin,grid.imax+1):
+        if stop == True:
+            break
+        else:
+            for j in range(grid.jmin,grid.jmax+1):
+                if grid.units[i][j].pts_cnt > 0:   
+                    first_subg = subgrid(grid,i,i,j,j)
+                    stop = True
+                    break
+
+    subg_set = []
+    try:
+        first_subg.first_join(grid)
+        #subg_set.append(first_subg)
+        sec_subg = first_subg.get_neighbor(grid)
+        sec_subg.first_join(grid)
+        #subg_set.append(sec_subg)
+        width = compute_global_width(grid,first_subg,sec_subg)
+        prev_subg = sec_subg
+
+        while True:
+            subg = prev_subg.get_neighbor(grid)
+            if subg == None:
+                break
+            if subg.join_cycle(grid,width):
+                subg_set.append(subg)
+                break
+            width = compute_global_width(grid,prev_subg,subg)
+            subg_set.append(subg)
+            prev_subg = subg
+    except:
+        print("Error during join algorithm!")
+        pass
+
+    fig = plt.figure(figMerge)
+    ax1 = fig.add_subplot(111)
+    for i in subg_set:
+        ax1.add_patch(matplotlib.patches.Rectangle((grid.units[i.imin][i.jmin].coord[0] - grid.asr/2,
+                                                    grid.units[i.imin][i.jmin].coord[1] - grid.asr/2),
+                                                    grid.units[i.imax][i.jmax].coord[0] - grid.units[i.imin][i.jmin].coord[0] + grid.asr,
+                                                    grid.units[i.imax][i.jmax].coord[1] - grid.units[i.imin][i.jmin].coord[1] + grid.asr,
+                                                    fill= False))
+
+
+def determine_order(points):
+    asr = average_sampling_radius(points)
+    grid = global_grid(asr*1,points)
+    joining_scheme(grid,points)
+    
+
+def contour():
+    global mergedPointsXY
+    datas = mergedPointsXY
+    points = []
+    for i in range(len(datas)):
+        points.append([datas[i].x,datas[i].y])
+    
+    determine_order(points)
     
 

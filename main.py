@@ -85,11 +85,8 @@ def compute_algo_circumference():
     # Compute raw datas into merged and centered datas (and save it into miscDatasStruct}
     lidarsSet.compute_raw_datas()
 
-    # Find the optimal smooth factor for the loess regression
-    utility.find_optimal_smooth_factor()
-
-    # Get the distance from the origin and angles values and compute a loess regression
-    utility.loess_algorithm()
+    # Compute contour
+    utility.contour()
 
     # Compute circumference
     utility.compute_circumference()
