@@ -1,5 +1,6 @@
 import lidars
 import utility
+import contour
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
