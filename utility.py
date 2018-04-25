@@ -69,7 +69,6 @@ def get_neighbor_vertices(tri,vertNb):
 
 def average_sampling_radius(points):
     n = len(points)
-    print("hello1")
     tri_points = spatial.Delaunay(points)
     
     # Lenght of the max edge lenght for each vertex 
@@ -83,9 +82,7 @@ def average_sampling_radius(points):
             dist_neighbors.append(dist)
         d_max.append(np.max(dist_neighbors))
 
-    print(np.sum(d_max)/n)
-    print("hello2")
-    return np.sum(d_max)/n
+    return (np.sum(d_max)/n)
     
 
 class unit:
@@ -137,61 +134,38 @@ class subgrid:
             self.jmin += int(np.floor(cnt))
         self.set_bound_close(grid)
     
-    def pts_cnt_subgrid(self,grid):
+    def pts_cnt_subgrid(self,grid,count_handled=True):
         pts_cnt = 0
         for i in range(self.imin,self.imax+1):
             for j in range(self.jmin,self.jmax+1):
-                pts_cnt += grid.units[i][j].pts_cnt
+                if (not count_handled and not grid.units[i][j].handled) or count_handled:
+                    pts_cnt += grid.units[i][j].pts_cnt
         return pts_cnt
         
     def set_bound_close(self,grid):
         # UP
-        valueA = valueB = False
+        self.bound_open[0] = False
         for i in range(self.imin,self.imax+1):
-            if grid.units[i][self.jmax].handled:
-                valueA = True
-            if grid.units[i][self.jmax].pts_cnt > 0:
-                valueB = True
-        if valueA or (not valueB):
-            self.bound_open[0] = False
-        else:
-            self.bound_open[0] = True
+            if not grid.units[i][self.jmax].handled and grid.units[i][self.jmax].pts_cnt > 0:
+                self.bound_open[0] = True
 
         # DOWN
-        valueA = valueB = False
+        self.bound_open[1] = False
         for i in range(self.imin,self.imax+1):
-            if grid.units[i][self.jmin].handled:
-                valueA = True
-            if grid.units[i][self.jmin].pts_cnt > 0:
-                valueB = True
-        if valueA or (not valueB):
-            self.bound_open[1] = False
-        else:
-            self.bound_open[1] = True
+            if not grid.units[i][self.jmin].handled and grid.units[i][self.jmin].pts_cnt > 0:
+                self.bound_open[1] = True
 
         # LEFT
-        valueA = valueB = False
+        self.bound_open[2] = False
         for j in range(self.jmin,self.jmax+1):
-            if grid.units[self.imin][j].handled:
-                valueA = True
-            if grid.units[self.imin][j].pts_cnt > 0:
-                valueB = True
-        if valueA or (not valueB):
-            self.bound_open[2] = False
-        else:
-            self.bound_open[2] = True
+            if not grid.units[self.imin][j].handled and grid.units[self.imin][j].pts_cnt > 0:
+                self.bound_open[2] = True
 
         # RIGHT
-        valueA = valueB = False
+        self.bound_open[3] = False
         for j in range(self.jmin,self.jmax+1):
-            if grid.units[self.imax][j].handled:
-                valueA = True
-            if grid.units[self.imax][j].pts_cnt > 0:
-                valueB = True
-        if valueA or (not valueB):
-            self.bound_open[3] = False
-        else:
-            self.bound_open[3] = True
+            if not grid.units[self.imax][j].handled and grid.units[self.imax][j].pts_cnt > 0:
+                self.bound_open[3] = True
     
     def compute_barycenter(self,grid):
         pts_cnt = 0
@@ -221,6 +195,8 @@ class subgrid:
     def first_join(self,grid):
         stop = False
         while stop == False:
+            self.getting_bigger(grid)
+            
             stop = False
             closed_bounds = 0
             for i in self.bound_open:
@@ -231,8 +207,9 @@ class subgrid:
 
             bounds_lenght = [self.imax - self.imin + 1, self.jmax - self.jmin + 1]
             longest_bound_lenght = np.max(bounds_lenght)
-            if longest_bound_lenght > 10:
+            if longest_bound_lenght > 0:
                 stop = True
+                
             self.getting_bigger(grid)
             
         self.compute_barycenter(grid)
@@ -245,13 +222,11 @@ class subgrid:
             if longest_bound_lenght > width:
                 stopW = True
 
-
             stopU = not self.bound_open[0]
             stopD = not self.bound_open[1]
             stopL = not self.bound_open[2]
             stopR = not self.bound_open[3]
             if (stopU and stopD) or (stopL and stopR) or stopW:
-                print(stopU,stopD,stopL,stopR,stopW)
                 break
                 
             self.getting_bigger(grid)
@@ -261,8 +236,7 @@ class subgrid:
             for i in self.bound_open:
                 if i == False:
                     closed_bounds += 1
-            if closed_bounds >= 3:
-                print(self.bound_open[:])
+            if closed_bounds == 4:
                 return True
         
         self.compute_barycenter(grid)
@@ -270,106 +244,88 @@ class subgrid:
         return False
 
     def retract_until_all_bounds_open(self,grid):
-        stopI = stopJ = False
         while False in self.bound_open:
             for i in range(4):
-                if self.jmax > self.jmin:
-                    if i == 0 and not self.bound_open[0]:
-                        self.retract('u',grid)
-                    if i == 1 and not self.bound_open[1]:
-                        self.retract('d',grid)
-                else:
-                    stopJ = True
-                                               
-                if self.imax > self.imin:
-                    if i == 2 and not self.bound_open[2]:
-                        self.retract('l',grid)
-                    if i == 3 and not self.bound_open[3]:
-                        self.retract('r',grid)
-                else:
-                    stopI = True
-                if stopI and stopJ:
-                    print("bisous")
-                    return False
-        return True
+                if i == 0 and not self.bound_open[0]:
+                    self.retract('u',grid)
+                if i == 1 and not self.bound_open[1]:
+                    self.retract('d',grid)
+                if i == 2 and not self.bound_open[2]:
+                    self.retract('l',grid)
+                if i == 3 and not self.bound_open[3]:
+                    self.retract('r',grid)
 
     
     def get_neighbor(self,grid):
         subg_width = self.imax - self.imin + 1
         subg_height = self.jmax - self.jmin + 1
 
+        neigh = None
         maximum = 0
         # UP
-        if self.bound_open[0] == True and self.locked_bound != 'u':
+        if self.locked_bound != 'u':
             subgU = subgrid(grid, self.imin, self.imax, self.jmax+1, self.jmax+subg_height)
-            cnt = subgU.pts_cnt_subgrid(grid)
+            cnt = subgU.pts_cnt_subgrid(grid,count_handled=True)
             if cnt > maximum:
                 maximum = cnt
-                subgU.locked_bound = 'd'
-                if not subgU.retract_until_all_bounds_open(grid):
-                    return None
-                l1 = subgU.imax - subgU.imin + 1
-                l2 = subgU.jmax - subgU.jmin + 1
-                subgU.retract('u',grid,l2/2)
-                subgU.retract('l',grid,l1/4)
-                subgU.retract('r',grid,l1/4)
-                neigh = subgU
-                print("u")
+                if subgU.pts_cnt_subgrid(grid,count_handled=False) != 0:
+                    subgU.locked_bound = 'd'
+                    subgU.retract_until_all_bounds_open(grid)
+                    l1 = subgU.imax - subgU.imin + 1
+                    l2 = subgU.jmax - subgU.jmin + 1
+                    subgU.retract('u',grid,l2/2)
+                    subgU.retract('l',grid,l1/4)
+                    subgU.retract('r',grid,l1/4)
+                    neigh = subgU
 
         # DOWN
-        if self.bound_open[1] == True and self.locked_bound != 'd':    
+        if self.locked_bound != 'd':    
             subgD = subgrid(grid, self.imin, self.imax, self.jmin-subg_height, self.jmin-1)
-            cnt = subgD.pts_cnt_subgrid(grid)
+            cnt = subgD.pts_cnt_subgrid(grid,count_handled=True)
             if cnt > maximum:
                 maximum = cnt
-                subgD.locked_bound = 'u'
-                if not subgD.retract_until_all_bounds_open(grid):
-                    return None
-                l1 = subgD.imax - subgD.imin + 1
-                l2 = subgD.jmax - subgD.jmin + 1
-                subgD.retract('d',grid,l2/2)
-                subgD.retract('l',grid,l1/4)
-                subgD.retract('r',grid,l1/4)
-                neigh = subgD
-                print("d")
+                if subgD.pts_cnt_subgrid(grid,count_handled=False) != 0:
+                    subgD.locked_bound = 'u'
+                    subgD.retract_until_all_bounds_open(grid)
+                    l1 = subgD.imax - subgD.imin + 1
+                    l2 = subgD.jmax - subgD.jmin + 1
+                    subgD.retract('d',grid,l2/2)
+                    subgD.retract('l',grid,l1/4)
+                    subgD.retract('r',grid,l1/4)
+                    neigh = subgD
 
         # LEFT
-        if self.bound_open[2] == True and self.locked_bound != 'l': 
+        if self.locked_bound != 'l': 
             subgL = subgrid(grid, self.imin-subg_width, self.imin-1, self.jmin, self.jmax)
-            cnt = subgL.pts_cnt_subgrid(grid)
+            cnt = subgL.pts_cnt_subgrid(grid,count_handled=True)
             if cnt > maximum:
                 maximum = cnt
-                subgL.locked_bound = 'r'
-                if not subgL.retract_until_all_bounds_open(grid):
-                    return None
-                l1 = subgL.jmax - subgL.jmin + 1
-                l2 = subgL.imax - subgL.imin + 1
-                subgL.retract('l',grid,l2/2)
-                subgL.retract('u',grid,l1/4)
-                subgL.retract('d',grid,l1/4)
-                neigh = subgL
-                print("l")
+                if subgL.pts_cnt_subgrid(grid,count_handled=False) != 0:
+                    subgL.locked_bound = 'r'
+                    subgL.retract_until_all_bounds_open(grid)
+                    l1 = subgL.jmax - subgL.jmin + 1
+                    l2 = subgL.imax - subgL.imin + 1
+                    subgL.retract('l',grid,l2/2)
+                    subgL.retract('u',grid,l1/4)
+                    subgL.retract('d',grid,l1/4)
+                    neigh = subgL
 
         # RIGHT
-        if self.bound_open[3] == True and self.locked_bound != 'r': 
+        if self.locked_bound != 'r': 
             subgR = subgrid(grid, self.imax+1, self.imax+subg_width, self.jmin, self.jmax)
-            cnt = subgR.pts_cnt_subgrid(grid)
+            cnt = subgR.pts_cnt_subgrid(grid,count_handled=True)
             if cnt > maximum:
                 maximum = cnt
-                subgR.locked_bound = 'l'
-                if not subgR.retract_until_all_bounds_open(grid):
-                    return None
-                l1 = subgR.jmax - subgR.jmin + 1
-                l2 = subgR.imax - subgR.imin + 1
-                subgR.retract('r',grid,l2/2)
-                subgR.retract('u',grid,l1/4)
-                subgR.retract('d',grid,l1/4)
-                neigh = subgR
-                print("r")
-        print("ok")
+                if subgR.pts_cnt_subgrid(grid,count_handled=False) != 0:
+                    subgR.locked_bound = 'l'
+                    subgR.retract_until_all_bounds_open(grid)
+                    l1 = subgR.jmax - subgR.jmin + 1
+                    l2 = subgR.imax - subgR.imin + 1
+                    subgR.retract('r',grid,l2/2)
+                    subgR.retract('u',grid,l1/4)
+                    subgR.retract('d',grid,l1/4)
+                    neigh = subgR
 
-        print(neigh.imin,neigh.imax,neigh.jmin,neigh.jmax)
-        print(neigh.bound_open)
         return neigh
     
         
@@ -437,6 +393,7 @@ def compute_global_width(grid,subg1,subg2):
 
     maximum = 0
     minimum = math.inf
+    
     for m in range(len(proj_dist)):
         if proj_dist[m][0] > maximum:
             maximum = proj_dist[m][0]
@@ -517,6 +474,7 @@ def joining_scheme(grid,points):
         sec_subg.first_join(grid)
         #subg_set.append(sec_subg)
         width = compute_global_width(grid,first_subg,sec_subg)
+        print(width,str(sec_subg.pts_cnt_subgrid(grid)))
         prev_subg = sec_subg
 
         while True:
@@ -527,6 +485,7 @@ def joining_scheme(grid,points):
                 subg_set.append(subg)
                 break
             width = compute_global_width(grid,prev_subg,subg)
+            print(width,str(subg.pts_cnt_subgrid(grid)))
             subg_set.append(subg)
             prev_subg = subg
     except:
@@ -541,12 +500,15 @@ def joining_scheme(grid,points):
                                                     grid.units[i.imax][i.jmax].coord[0] - grid.units[i.imin][i.jmin].coord[0] + grid.asr,
                                                     grid.units[i.imax][i.jmax].coord[1] - grid.units[i.imin][i.jmin].coord[1] + grid.asr,
                                                     fill= False))
+        #ax1.text(grid.units[i.imin][i.jmin].coord[0] - grid.asr/2, grid.units[i.imin][i.jmin].coord[1] - grid.asr/2, str(i.pts_cnt_subgrid(grid)))
+    return subg_set
 
 
 def determine_order(points):
     asr = average_sampling_radius(points)
-    grid = global_grid(asr*1,points)
-    joining_scheme(grid,points)
+    grid = global_grid(asr*2,points)
+    subgrids = joining_scheme(grid,points)
+    return subgrids
     
 
 def contour():
@@ -555,7 +517,15 @@ def contour():
     points = []
     for i in range(len(datas)):
         points.append([datas[i].x,datas[i].y])
+
+    subgrids = determine_order(points)
+
+    barx = []
+    bary = []
+    for s in subgrids:
+        barx.append(s.barycenter[0])
+        barx.append(s.barycenter[1])
+    plt.plot(s.barycenter[1],'kx')
     
-    determine_order(points)
     
 

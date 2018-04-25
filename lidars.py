@@ -36,8 +36,8 @@ class lidarInfos:
             z = dist*(-1)*(c3*s2) + self.position.z
             self.pointDatas.append(utility.point(x,y,z))
             # DEBUG
-            for j in range(3):
-                self.pointDatas.append(utility.point(x+np.random.rand()*5-2.5,y+np.random.rand()*5-2.5,z))
+            for j in range(10):
+                self.pointDatas.append(utility.point(x+np.random.rand()*10-5,y+np.random.rand()*10-5,z))
             
         # Save patient's height
         utility.patientHeight = patientHeight
@@ -111,7 +111,6 @@ class setOfLidars:
 
     def plot_merged_datas(self):
         global mergedPointsXY
-        global centeredPointsXY
 
         plt.figure(utility.figMerge)
         
@@ -122,16 +121,10 @@ class setOfLidars:
         self.plot_origin_and_lidars_2D()
         mergedPointsX = []
         mergedPointsY = []
-        centeredPointsX = []
-        centeredPointsY = []
         for i in range(len(utility.mergedPointsXY)):
             mergedPointsX.append(utility.mergedPointsXY[i].x)
             mergedPointsY.append(utility.mergedPointsXY[i].y)
-        for i in range(len(utility.centeredPointsXY)):
-            centeredPointsX.append(utility.centeredPointsXY[i].x)
-            centeredPointsY.append(utility.centeredPointsXY[i].y)
-        plt.plot(mergedPointsX,mergedPointsY,'k.',label='Raw datas',ms=2)
-        plt.plot(centeredPointsX,centeredPointsY,'b.',label='Centered datas',ms=4)
+        plt.plot(mergedPointsX,mergedPointsY,'b.',label='Raw datas',ms=2)
         plt.gca().set_aspect('equal', adjustable='box')
         plt.axis(constants.boundsDatasLidars)
 
