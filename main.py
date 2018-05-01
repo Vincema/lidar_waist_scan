@@ -6,6 +6,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import lidarsDrv as lid
 import pylab
+import warnings
 
 def disp_menu():
     print('')
@@ -25,8 +26,8 @@ def disp_menu():
 
     
 def execute_actions():
-    choice = input('    Waiting for input: ')
-
+    #choice = input('    Waiting for input: ')
+    choice = '3'
     if choice == 'q' or choice == 'Q':
         if drv.areConnected == 1:
             drv.disconnect()
@@ -87,7 +88,7 @@ def compute_algo_circumference():
     lidarsSet.compute_raw_datas()
 
     # Compute contour
-    utility.contour()
+    contour.contour()
 
     # Compute circumference
     utility.compute_circumference()
@@ -96,6 +97,9 @@ def compute_algo_circumference():
     print('\nClose all figures to continue...\n')
     plt.show(block=True)
 
+
+# Ignore warnings
+warnings.simplefilter("ignore")
    
 # Init lidars infos
 lidarsSet = lidars.setOfLidars()

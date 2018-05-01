@@ -39,6 +39,10 @@ class distAngleData:
         self.alpha = alpha
 
 
+def euclidian_dist(a,b):
+    return np.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
+    
+
 def is_useful_data(pointXYZ):
     # Is in the circle of 75% of the radius of the outter circle formed by the lidars 
     if math.sqrt(pointXYZ.x**2 + pointXYZ.y**2) <= (constants.lidarsDist-constants.deadZone):
