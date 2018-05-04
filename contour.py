@@ -5,8 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import BSpline, splev, splprep, splrep, CubicSpline
 from scipy.linalg import solve,lstsq
+from scipy.spatial import distance
 
-NB_OF_CTRL_POINTS = 20
+NB_OF_CTRL_POINTS = 5
 ORDER = 3
 
 class bspline:
@@ -39,6 +40,12 @@ class bspline:
         self.dery1 = self.bsply.derivative(1)
         self.derx2 = self.bsplx.derivative(2)
         self.dery2 = self.bsply.derivative(2)
+
+        # Sample some values
+        self.sample_t = np.linspace(self.t_min,self.t_max,300)
+        self.sample_values = np.zeros((len(self.sample_t),2))
+        for i in range(len(self.sample_t)):
+            self.sample_values[i] = self.estimate(self.sample_t[i])
 
     def get_basis(self,tk):
         tk = self.modulo_tk(tk)  
@@ -93,8 +100,8 @@ def init_SDM(points):
     min_x = np.min(points[:,0])
     max_y = np.max(points[:,1])
     min_y = np.min(points[:,1])
-    radius = np.max([max_x-min_x,max_y-min_y])/2 + 10
-    center= np.array([min_x+radius-10,min_y+radius-10])
+    radius = np.max([max_x-min_x,max_y-min_y])/2 + 50
+    center= np.array([min_x+radius-50,min_y+radius-50])
     n = NB_OF_CTRL_POINTS
     P = np.zeros((n,2))
     for i in range(n):
@@ -103,34 +110,16 @@ def init_SDM(points):
 
 
 def find_tk_foot_point(bspl,point):
-    # Gradient descent
-    speed_factor = 0.01
-    epsilon_grad = 0.1
-    epsilon_deri = 0.01
-    x = 0
-    iter_nb = 0
-    max_iter_nb = 100
-    stop = False
-    while not stop:
-        y1 = utility.euclidian_dist(bspl.estimate(x),point)
-        y2 = utility.euclidian_dist(bspl.estimate(x+epsilon_deri),point)
-        grad = (y2-y1)/epsilon_deri
-        step = (-grad*speed_factor)
-        iter_nb += 1
-        if abs(grad) <= epsilon_grad or iter_nb > max_iter_nb:
-            stop = True
-        else:
-            x += step
-    tk = bspl.modulo_tk(x)
+    dist = np.zeros(len(bspl.sample_t))
+    for i in range(len(bspl.sample_t)):
+        dist[i] = utility.euclidian_dist(bspl.sample_values[i],point)
+    tk = bspl.sample_t[np.argmin(dist)]
     return tk
-    
+
 
 def squared_dist(esd,const,dist,rad,Ta_tk,No_tk,tk,neigh,bspl,point):
     # Basis elements
     b_terms = bspl.get_basis(tk)
-    #print(tk)
-    #print(b_terms)
-    #print()
 
     """
     print('Pt: ',point)
@@ -141,33 +130,110 @@ def squared_dist(esd,const,dist,rad,Ta_tk,No_tk,tk,neigh,bspl,point):
     print('    Rad: ',rad)
     print()
     """
+    
     # SDM
     if dist >= 0:
     #if dist >= 0 and dist < rad:
         for i in range(NB_OF_CTRL_POINTS):
             for j in range(NB_OF_CTRL_POINTS):
-                temp = 2*b_terms[i]*b_terms[j]
+                temp = b_terms[i]*b_terms[j]
                 esd[i+0][j+0]                                 += temp*(No_tk[0]**2)    
                 esd[i+0][j+NB_OF_CTRL_POINTS]                 += temp*No_tk[0]*No_tk[1]
                 esd[i+NB_OF_CTRL_POINTS][j+0]                 += temp*No_tk[0]*No_tk[1]
                 esd[i+NB_OF_CTRL_POINTS][j+NB_OF_CTRL_POINTS] += temp*(No_tk[1]**2)
-            const[i+0]                 -= 2*b_terms[i]*No_tk[0]*np.sum((neigh-point)*No_tk)
-            const[i+NB_OF_CTRL_POINTS] -= 2*b_terms[i]*No_tk[1]*np.sum((neigh-point)*No_tk)
+            const[i+0]                 -= b_terms[i]*No_tk[0]*np.sum((neigh-point)*No_tk)
+            const[i+NB_OF_CTRL_POINTS] -= b_terms[i]*No_tk[1]*np.sum((neigh-point)*No_tk)
     elif dist < 0:
         for i in range(NB_OF_CTRL_POINTS):
             for j in range(NB_OF_CTRL_POINTS):
-                temp = 2*b_terms[i]*b_terms[j] 
+                temp = b_terms[i]*b_terms[j] 
                 esd[i+0][j+0]                                 += temp*(dist/(dist-rad))*(Ta_tk[0]**2) + temp*(No_tk[0]**2)
                 esd[i+0][j+NB_OF_CTRL_POINTS]                 += temp*(dist/(dist-rad))*Ta_tk[0]*Ta_tk[1] + temp*No_tk[0]*No_tk[1]
                 esd[i+NB_OF_CTRL_POINTS][j+0]                 += temp*(dist/(dist-rad))*Ta_tk[0]*Ta_tk[1] + temp*No_tk[0]*No_tk[1]
                 esd[i+NB_OF_CTRL_POINTS][j+NB_OF_CTRL_POINTS] += temp*(dist/(dist-rad))*(Ta_tk[1]**2) + temp*(No_tk[1]**2)
-            const[i+0]                 += 2*(dist/(dist-rad))*b_terms[i]*Ta_tk[0]*np.sum((neigh-point)*Ta_tk) + 2*b_terms[i]*No_tk[0]*np.sum((neigh-point)*No_tk)
-            const[i+NB_OF_CTRL_POINTS] += 2*(dist/(dist-rad))*b_terms[i]*Ta_tk[1]*np.sum((neigh-point)*Ta_tk) + 2*b_terms[i]*No_tk[1]*np.sum((neigh-point)*No_tk)
+            const[i+0]                 -= (dist/(dist-rad))*b_terms[i]*Ta_tk[0]*np.sum((neigh-point)*Ta_tk) + 2*b_terms[i]*No_tk[0]*np.sum((neigh-point)*No_tk)
+            const[i+NB_OF_CTRL_POINTS] -= (dist/(dist-rad))*b_terms[i]*Ta_tk[1]*np.sum((neigh-point)*Ta_tk) + 2*b_terms[i]*No_tk[1]*np.sum((neigh-point)*No_tk)
     else:
         print("Error rad > dist: ",dist,'>',rad)
         plt.show()
         exit()
+
+    #c0x =   
+    #c1x = 
+    #plt.plot([neigh[0],neigh[0]+c0x],[neigh[1],neigh[1]+c1x],'k')
     return esd,const
+
+def mark_zeros_line(esd,tresh):
+    zeros = []
+    for i in range(NB_OF_CTRL_POINTS*2):
+        all_zeros = True
+        for j in range(NB_OF_CTRL_POINTS*2):
+            if np.abs(esd[i][j]) >= tresh:
+                all_zeros = False
+        zeros.append(all_zeros)
+    cpt = 0
+    for i in zeros:
+        if i == False:
+            cpt+=1
+    if cpt < 2:
+        print("Cannot minimize SD error!")
+        exit(1)
+    return zeros
+
+def apply_zeros_constraints(esd,const,zeros):
+    for i in range(NB_OF_CTRL_POINTS*2):
+        if zeros[i]:
+            for j in range(NB_OF_CTRL_POINTS*2):
+                esd[i][j] = 0.0
+                esd[j][i] = 0.0
+            esd[i][i] = 1.0
+            const[i] = 0.0
+    return esd,const
+
+def move_ctrl_points(P,D,zeros):
+    for i in range(NB_OF_CTRL_POINTS):
+        if not zeros[i]:
+            P[0][i] += D[i]
+        if not zeros[NB_OF_CTRL_POINTS+i]:
+            P[1][i] += D[NB_OF_CTRL_POINTS+i]
+
+    for i in range(NB_OF_CTRL_POINTS):
+        if zeros[i]:
+            j = (i-1)%NB_OF_CTRL_POINTS
+            diff1 = 1
+            while zeros[j] == True:
+                j = (j-1)%NB_OF_CTRL_POINTS
+                diff1 += 1 
+            x1 = P[0][j]
+            j = (i+1)%NB_OF_CTRL_POINTS
+            diff2 = 1
+            while zeros[j] == True:
+                j = (j+1)%NB_OF_CTRL_POINTS
+                diff2 += 1 
+            x2 = P[0][j]
+            x_mid = x1 + (x2-x1)/(diff1+diff2)
+            x = x_mid + (P[0][i]-x_mid)/2
+            P[0][i] = x
+    for i in range(NB_OF_CTRL_POINTS):
+        if zeros[i+NB_OF_CTRL_POINTS]:
+            j = (i-1)%(NB_OF_CTRL_POINTS) 
+            diff1 = 1
+            while zeros[j+NB_OF_CTRL_POINTS] == True:
+                j = (j-1)%NB_OF_CTRL_POINTS
+                diff1 += 1 
+            y1 = P[1][j]
+            j = (i+1)%NB_OF_CTRL_POINTS
+            diff2 = 1
+            while zeros[j+NB_OF_CTRL_POINTS] == True:
+                j = (j+1)%NB_OF_CTRL_POINTS
+                diff2 += 1 
+            y2 = P[1][j]
+            y_mid = y1 + (y2-y1)/(diff1+diff2)
+            y = y_mid + (P[1][i]-y_mid)/2
+            P[1][i] = y
+    return P
+            
+            
 
 def iter_SDM(points,bspl):
     tk = np.zeros(len(points))
@@ -191,8 +257,7 @@ def iter_SDM(points,bspl):
         No_tk[i] = No_tk[i]/utility.euclidian_dist([0,0],No_tk[i])
         # Radius
         rad[i] = abs(((der_1[0]**2 + der_1[1]**2)**(3/2))/(der_1[0]*der_2[1]-der_2[0]*der_1[1]))
-        K_tk = rad[i]*No_tk[i]
-        linear_comb = (points[i]-neigh[i])/K_tk
+        linear_comb = (points[i]-neigh[i])*No_tk[i]
         # Distance
         dist[i] = utility.euclidian_dist(neigh[i],points[i])
         if linear_comb[np.argmax(np.abs(linear_comb))] < 0:
@@ -204,26 +269,31 @@ def iter_SDM(points,bspl):
         esd,const = squared_dist(esd,const,dist[i],rad[i],Ta_tk[i],No_tk[i],tk[i],neigh[i],bspl,points[i])
     esd *= 0.5
     const *= 0.5
-    D = lstsq(esd,const)[0] # Solve Ax = b 
-        
-    for i in range(NB_OF_CTRL_POINTS):
-        bspl.c[0][i] += D[i]
-        bspl.c[1][i] += D[NB_OF_CTRL_POINTS+i]
+
+    zeros = mark_zeros_line(esd,0.5)
+    esd,const = apply_zeros_constraints(esd,const,zeros)
+    
+    D = lstsq(esd,const)[0]
+
+    move_ctrl_points(bspl.c,D,zeros)
+
+    #for i in range(NB_OF_CTRL_POINTS):
+    #    bspl.c[0][i] += D[i]
+    #    bspl.c[1][i] += D[NB_OF_CTRL_POINTS+i]
     
     print(const)
     print()
     print(esd)
     print()
     print(D)
+    for i in range(NB_OF_CTRL_POINTS*2):
+        print(np.max((esd[i,:])))
 
     bspl.update(bspl.c)
-    err = 0
-    for i in range(len(points)):
-        err += (np.sum((neigh[i]-points[i])*No_tk))**2
-    print(err/len(points))
+
     return bspl
 
- 
+
 def SDM_algorithm(points):
     P = init_SDM(points)
     
@@ -232,11 +302,11 @@ def SDM_algorithm(points):
     bspl.plot_curve(True)
     #plt.show()
 
-    for i in range(1):
+    for i in range(10):
         bspl = iter_SDM(points,bspl)
-        bspl.plot_curve(True)
+        #bspl.plot_curve(True)
         #plt.show()
-
+    bspl.plot_curve(True)
 
 def contour():
     datas = utility.mergedPointsXY
