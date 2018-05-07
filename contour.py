@@ -12,9 +12,9 @@ import time
 NB_OF_CTRL_POINTS_START = 4
 ORDER = 3
 GRID_STEP = 0.5  # mm
-NB_POINTS_BSPL = 200
+NB_POINTS_BSPL_START = 200
 APPROXIMATION_ERROR_TRESHOLD = 1
-ITER_MAX = 100
+ITER_MAX = 3
 
 
 class bspline:
@@ -50,9 +50,10 @@ class bspline:
         self.dery2 = self.bsply.derivative(2)
 
         # Sample some values
-        self.sample_t = np.linspace(self.t_min,self.t_max,NB_POINTS_BSPL)
-        self.sample_values = np.zeros((NB_POINTS_BSPL,2))
-        for i in range(NB_POINTS_BSPL):
+        self.sample_nb = int(NB_POINTS_BSPL_START*self.n_c/NB_OF_CTRL_POINTS_START)
+        self.sample_t = np.linspace(self.t_min,self.t_max,self.sample_nb)
+        self.sample_values = np.zeros((self.sample_nb,2))
+        for i in range(self.sample_nb):
             self.sample_values[i] = self.estimate(self.sample_t[i])
 
     def get_basis(self,tk):
@@ -98,9 +99,9 @@ class bspline:
         return c
 
     def plot_curve(self,plot_ctrl_pts=False):
-        u = np.linspace(self.t_min,self.t_max,NB_POINTS_BSPL)
-        pt = np.zeros((NB_POINTS_BSPL,2))
-        for i in range(NB_POINTS_BSPL):
+        u = np.linspace(self.t_min,self.t_max,self.sample_nb)
+        pt = np.zeros((self.sample_nb,2))
+        for i in range(self.sample_nb):
             pt[i] = self.estimate(u[i])
         plt.plot(pt[:,0],pt[:,1])
         if plot_ctrl_pts:
@@ -138,8 +139,8 @@ def init_SDM(points):
 
 
 def find_tk_foot_point(bspl,point):
-    dist = np.zeros(NB_POINTS_BSPL)
-    for i in range(NB_POINTS_BSPL):
+    dist = np.zeros(bspl.sample_nb)
+    for i in range(bspl.sample_nb):
         dist[i] = np.linalg.norm(bspl.sample_values[i]-point)
     tk = bspl.sample_t[np.argmin(dist)]
 
