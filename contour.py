@@ -9,12 +9,13 @@ from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS_START = 4
+NB_OF_CTRL_POINTS_START = 5
 ORDER = 3
 GRID_STEP = 0.5  # mm
 NB_POINTS_BSPL_START = 200
 APPROXIMATION_ERROR_TRESHOLD = 1
-ITER_MAX = 3
+APPROXIMATION_CONV_TRESHOLD = 0.1
+ITER_MAX = 50
 
 
 class bspline:
@@ -29,16 +30,20 @@ class bspline:
         x = np.append(c[0],c[0,0:ORDER+1])
         y = np.append(c[1],c[1,0:ORDER+1])
         self.t = range(len(x))
-        self.t_max = float(len(x) - ORDER - 1)
+        self.t_max = self.n_c
         self.t_min = 0.0
         self.basis = []
         for i in range(self.n_c):
             self.basis.append(BSpline.basis_element(self.t[i:i+ORDER+2],False))
-
+        # Rearrange the basis element because the i-th basis element defines the curve at the i-th+ORDER ctrl point
+        for i in range(ORDER):
+            self.basis.append(self.basis.pop(0))
+            
         x = np.zeros(self.n_c)
         y = np.zeros(self.n_c)
         for i in range(self.n_c):
             [x[i],y[i]] = self.estimate_with_basis(self.t[i])
+
         x = np.append(x,x[0])
         y = np.append(y,y[0])
         t2 = range(len(x))
@@ -57,7 +62,7 @@ class bspline:
             self.sample_values[i] = self.estimate(self.sample_t[i])
 
     def get_basis(self,tk):
-        tk = self.modulo_tk(tk)  
+        tk = self.modulo_tk(tk)
         b_term = np.zeros(self.n_c)
         for i in range(self.n_c):
             if not np.isnan(self.basis[i](tk)):
@@ -90,13 +95,64 @@ class bspline:
         tk = self.modulo_tk(tk)
         return np.array([self.derx2(tk),self.dery2(tk)])
 
-    def add_ctrl_point(self,pos):
+    def add_ctrl_point(self,pos,points,tk,dist):
         pos = int(pos)
         c = self.c
         new_ctrl_x = (c[0][(pos+1)%self.n_c] + c[0][pos]) / 2.0 
         new_ctrl_y = (c[1][(pos+1)%self.n_c] + c[1][pos]) / 2.0
         c = np.insert(c,(pos+1)%self.n_c,[new_ctrl_x,new_ctrl_y],axis=1)
         return c
+
+        """
+        # Uses PERM method (http://mi.eng.cam.ac.uk/~cipolla/publications/article/1999-PAMI-bspline-fitting.pdf)
+        sorted_ind = np.argsort(tk)
+        sorted_tk = tk[sorted_ind]
+        sorted_dist = dist[sorted_ind]
+
+        sub_tk = np.array([])
+        sub_dist = np.array([])
+        sub_size = 0
+        for i in range(len(points)):
+            if np.floor(sorted_tk[i]) == pos:
+                sub_size += 1
+                sub_tk = np.append(sub_tk,sorted_tk[i])
+                sub_dist = np.append(sub_dist,sorted_dist[i])
+
+        left_cnt = 0
+        right_cnt = sub_size-1
+        El = np.zeros(sub_size)
+        Er = np.zeros(sub_size)
+        alpha_left = sub_dist[0]
+        alpha_right = sub_dist[-1]
+        for i in range(sub_size):
+            beta = sub_dist[i]          
+            for j in range(left_cnt):
+                El[i] += (alpha_left + j*((beta-alpha_left)/left_cnt) - sub_dist[j])**2
+            for j in range(right_cnt):
+                Er[i] += (alpha_right + j*((beta-alpha_right)/right_cnt) - sub_dist[j])**2
+            left_cnt += 1
+            right_cnt -= 1
+
+        print(sub_tk)
+        print(El)
+        print()
+        print(Er)
+        print()
+
+        grad_El = np.gradient(El)
+        grad_Er = np.gradient(Er)
+        hess_El = utility.hessian(El)
+        hess_Er = utility.hessian(Er)
+
+        print(hess_El)
+        energy_l = 0.5 * np.matmul(np.matmul(grad_El,np.linalg.inv(hess_El)),np.transpose(grad_El))
+        energy_r = 0.5 * np.matmul(np.matmul(grad_Er,np.linalg.inv(hess_Er)),np.transpose(grad_Er))
+        tot_energy = energy_l+energy_r
+        print(tot_energy)
+        tk_max_energy = sub_tk[np.argmax(tot_energy)]
+        print(tk_max_energy)
+        """    
+    
 
     def plot_curve(self,plot_ctrl_pts=False):
         u = np.linspace(self.t_min,self.t_max,self.sample_nb)
@@ -130,7 +186,7 @@ def init_SDM(points):
     max_y = np.max(points[:,1])
     min_y = np.min(points[:,1])
     radius = np.max([max_x-min_x,max_y-min_y])/2 + 20
-    center= np.array([min_x+radius-20,min_y+radius-20])
+    center= np.array([min_x+radius+10,min_y+radius-50])
     n = NB_OF_CTRL_POINTS_START
     P = np.zeros((n,2))
     for i in range(n):
@@ -184,6 +240,7 @@ def squared_dist(esd,const,dist,rad,Ta_tk,No_tk,tk,neigh,bspl,point):
 
     return esd,const
 
+
 def mark_zeros_line(bspl,esd,tresh):
     zeros = []
     for i in range(bspl.n_c*2):
@@ -201,6 +258,7 @@ def mark_zeros_line(bspl,esd,tresh):
         exit(1)
     return zeros
 
+
 def apply_zeros_constraints(bspl,esd,const,zeros):
     for i in range(bspl.n_c*2):
         if zeros[i]:
@@ -210,6 +268,7 @@ def apply_zeros_constraints(bspl,esd,const,zeros):
             esd[i][i] = 1.0
             const[i] = 0.0
     return esd,const
+
 
 def move_ctrl_points(bspl,P,D,zeros):
     for i in range(bspl.n_c):
@@ -304,7 +363,8 @@ def compute_points_attributes(points,bspl):
 def iter_SDM(points,bspl):
     iter_max = ITER_MAX
     nb_iter = 0
-    while nb_iter < iter_max:
+    temp_error = [math.inf,math.inf]
+    while True:
         nb_iter += 1
         
         # Compute points attributes
@@ -333,16 +393,26 @@ def iter_SDM(points,bspl):
         dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)   
         Ej = compute_approx_error(points,bspl,tk,dist)
         approx_error = (1/bspl.n_c)*np.sum(Ej)
+        temp_error[1] = temp_error[0]
+        temp_error[0] = approx_error 
         print(approx_error)
 
         # Stop condition
         epsi_approx_error = APPROXIMATION_ERROR_TRESHOLD
+        epsi_convergence = APPROXIMATION_CONV_TRESHOLD
         if approx_error <= epsi_approx_error:
             break
-        
-        # Add ctrl point
-        P = bspl.add_ctrl_point(np.argmax(Ej))
-        bspl.update(P)
+        if nb_iter >= iter_max:
+            break
+        if np.abs(temp_error[1]-temp_error[0]) <= epsi_convergence:
+            temp_error = [math.inf,math.inf]
+            # Add ctrl point
+            print("New ctrl point added")
+            P = bspl.add_ctrl_point(np.argmax(Ej),points,tk,dist)
+            bspl.update(P)
+
+        #bspl.plot_curve(True)
+        #plt.show()
 
     return bspl
 
