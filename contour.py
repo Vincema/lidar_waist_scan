@@ -14,8 +14,8 @@ ORDER = 3
 GRID_STEP = 0.5  # mm
 NB_POINTS_BSPL = 100
 APPROXIMATION_ERROR_TRESHOLD = 1
-APPROXIMATION_CONV_TRESHOLD = 0.1
-ITER_MAX = 10
+APPROXIMATION_CONV_TRESHOLD = 0.2
+ITER_MAX = 20
 
 
 class bspline:
@@ -194,12 +194,15 @@ def init_SDM(points):
     min_x = np.min(points[:,0])
     max_y = np.max(points[:,1])
     min_y = np.min(points[:,1])
-    radius = np.max([max_x-min_x,max_y-min_y])/2 + 20
-    center= np.array([min_x+radius-20,min_y+radius-20])
+    #radius = np.max([max_x-min_x,max_y-min_y])/2 + 20
+    #center= np.array([min_x+radius-20,min_y+radius-20])
+    radius = constants.lidarsDist
+    center = [0.0,0.0]
     n = NB_OF_CTRL_POINTS_START
     P = np.zeros((n,2))
     for i in range(n):
         P[i] = [radius*np.cos(i*2*math.pi/n)+center[0],radius*np.sin(i*2*math.pi/n)+center[1]]
+        
     return P
 
 
@@ -404,7 +407,8 @@ def iter_SDM(points,bspl):
         # Approximation error
         dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)   
         Ej = compute_approx_error(points,bspl,tk,dist)
-        approx_error = (1/bspl.n_c)*np.sum(Ej)
+        #approx_error = (1/bspl.n_c)*np.sum(Ej)
+        approx_error = np.max(Ej)
         temp_error[1] = temp_error[0]
         temp_error[0] = approx_error 
         print(approx_error)
@@ -420,10 +424,13 @@ def iter_SDM(points,bspl):
             temp_error = [math.inf,math.inf]
             # Add ctrl point
             print("New ctrl point added")
+            #bspl.plot_curve(True)
             P = bspl.add_ctrl_point(np.argmax(Ej),points,tk,dist)
             bspl.update()
             # Compute points attributes
             dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
+            #bspl.plot_curve(True)
+            #plt.show()
 
         #bspl.plot_curve(True)
         #plt.show()

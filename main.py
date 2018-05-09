@@ -26,8 +26,8 @@ def disp_menu():
 
     
 def execute_actions():
-    #choice = input('    Waiting for input: ')
-    choice = '3'
+    choice = input('    Waiting for input: ')
+    #choice = '3'
     if choice == 'q' or choice == 'Q':
         if drv.areConnected == 1:
             drv.disconnect()
@@ -84,18 +84,22 @@ def compute_algo_circumference():
     # Plot raw datas
     lidarsSet.plot_raw_datas()
 
-    # Compute raw datas into merged and centered datas (and save it into miscDatasStruct}
+    # Compute raw datas into merged datas
     lidarsSet.compute_raw_datas()
+    
+    if len(utility.mergedPointsXY) > 0: 
+        # Compute contour
+        contour.contour()
 
-    # Compute contour
-    contour.contour()
+        # Compute circumference
+        utility.compute_circumference()
 
-    # Compute circumference
-    utility.compute_circumference()
+        # Show the plots
+        print('\nClose all figures to continue...\n')
+        plt.show(block=True)
 
-    # Show the plots
-    print('\nClose all figures to continue...\n')
-    plt.show(block=True)
+    else:
+        print('    No data point has been read in the desired area!')
 
 
 # Ignore warnings

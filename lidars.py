@@ -31,7 +31,7 @@ class lidarInfos:
             s1 = math.sin(visionAngle*math.pi/180)
             s2 = math.sin(datas[i][1]*math.pi/180)
             s3 = math.sin(datas[i][0]*math.pi/180)
-            x = dist*((c1*c2*c3)-(s1*s3)) + self.position.x
+            x = dist*((c1*c2*c3)-(s1*s3)) + self.position.x 
             y = dist*((c1*s3)+(c2*c3*s1)) + self.position.y
             z = dist*(-1)*(c3*s2) + self.position.z
             self.pointDatas.append(utility.point(x,y,z))
@@ -48,7 +48,8 @@ class setOfLidars:
 
     def read_datas_files(self):
         for i in range(3):
-            datas,hgt = reader.read_data_single_lidar(i)
+            # datas,hgt = reader.read_data_single_lidar(i)
+            datas,hgt = reader.read_data_single_lidar(0)
             self.lidarsSet[i].save_datas(datas,hgt)
 
     def plot_origin_and_lidars_2D(self):

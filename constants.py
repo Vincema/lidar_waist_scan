@@ -1,28 +1,25 @@
+#### DEBUG ####
+# Number of lidars that should be connected
+nb_of_lidars = 1
 
 # Path to the datas directory
 dirPath = r'/home/pi/Documents/lidar_waist_scan/lidars_datas'
 
-# Angle of lidars
 lidarsAngle = [11*180/6,
                7*180/6,
                3*180/6]
 
 # Distance of lidars from center
-lidarsDist = 250
+lidarsDist = 500
 
 # Height of lidars from the base
-lidarsHeight = 1000
+lidarsHeight = 500
 
 # Bounds of plots
-boundsDatasLidars = [-400,
-                     400,
-                     -300,
-                     400]
-
-# Smooth Factor f optimization
-fMin = 0.10
-fMax = 0.80
-stepNb = 7
+boundsDatasLidars = [-600,
+                     600,
+                     -600,
+                     600]
 
 # Nb of datas to retrieve for each lidar in total
 nbOfDatasToRetrieve = 200
@@ -32,18 +29,22 @@ serialPort = ['/dev/ttyUSB0',
               '/dev/ttyUSB1',
               '/dev/ttyUSB2']
 
-# Speed of servos (0-255)
-servosSpeed = 50
+# Speed of servos (0-254)
+servosSpeed = 100
 
 # Servos IDs
-servosIDs = [1,2,3]
+servosIDs = [3,2,4]
+
+# Servos limit angle
+limit_ccw_angle = 0
+limit_cw_angle = 90
 
 # Heights margin for scanning (arround the patient's height)
-margin_top = 25
-margin_bot = 25
+margin_top = 10
+margin_bot = 10
 
 # Size of the zone from the lidar where measurement can't be performed (mm)
-deadZone = 170
+deadZone = 100
 
 # Clustering constants
 deltaMinClust = 5   # Distance precision stop condition in mm

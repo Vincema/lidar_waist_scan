@@ -1,14 +1,20 @@
 from drivers.rplidar import RPLidar
 from pyax12.connection import Connection
+import numpy as np
 import constants
 import time
 import math
+
+BROADCAST_ID = 254
+
+# For debug
+p = np.array([0.17897664, 1.4094397, 5.8093253])
 
 def compute_angle_array_for_scan(height):
     angle_array = []
     meas_nb = []
     
-    # If the patient's height is at the lidar level, no need to change angle 
+    # If the patient's height is at the lidar level, no need to change the angle 
     if abs(constants.lidarsHeight - height) <= constants.margin_top or abs(constants.lidarsHeight - height) <= constants.margin_bot:
         angle_array.append(0)
         meas_nb.append(constants.nbOfDatasToRetrieve)
@@ -38,7 +44,6 @@ def compute_angle_array_for_scan(height):
             meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist)))
         else:
             meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (dist2-dist1) / (max_meas_dist-min_meas_dist)))
-    
     return [angle_array,meas_nb]
     
 
@@ -59,7 +64,7 @@ class driverLidars:
         except:
             print('    Cannot open serial connection for servos!')
             return -1
-        for lidarNb in range(3):
+        for lidarNb in range(constants.nb_of_lidars):
             try:
                 self.lidars.append(RPLidar(constants.serialPort[lidarNb],baudrate=115200))
                 self.lidars[lidarNb].connect()
@@ -73,12 +78,12 @@ class driverLidars:
                 if self.serial_connection.ping(constants.servosIDs[lidarNb]) == False:
                     raise
                 self.serial_connection.set_speed(constants.servosIDs[lidarNb],constants.servosSpeed)
-                self.serial_connection.goto(constants.servosIDs[lidarNb],0,degrees=True)
+                self.servos_goto(constants.servosIDs[lidarNb],0)
             except:
                 print('    Cannot connect to the servo',lidarNb+1,'!')
                 return -1
             print('    Connected to servo',lidarNb+1)
-            time.sleep(0.25) # To avoid too much drained current
+            time.sleep(0.25) # To avoid a too high current drain
         self.areConnected = 1
         return 0
         
@@ -86,15 +91,33 @@ class driverLidars:
         print('Disconnecting to lidars and servos...')
         self.serial_connection.close()
         print('    Disconnected to servos serial')
-        for lidarNb in range(3):
+        for lidarNb in range(constants.nb_of_lidars):
             self.lidars[lidarNb].disconnect()
             time.sleep(0.25) # To avoid to drain too much current
             print('    Disconnected to lidar',lidarNb+1)
         self.lidars[:] = []
         self.areConnected = 0
 
+    def servos_goto(self,servosID,position):
+        position *= -1
+        cmd = np.polyval(p,position)
+        if cmd <= constants.limit_cw_angle and cmd >= constants.limit_ccw_angle:
+            sat_cmd = cmd
+            true_angle = position
+        else:
+            if cmd > constants.limit_cw_angle:
+                sat_cmd = constants.limit_cw_angle
+            else:
+                sat_cmd = constants.limit_ccw_angle
+            
+            true_angle = np.roots(np.append(p[0:-1],p[-1]-sat_cmd))[1]
+        self.serial_connection.goto(servosID,sat_cmd,degrees=True)
+        print('Desired',position)
+        print('Real',true_angle)
+        return true_angle
+
     def check_link_state(self):
-        for lidarNb in range(3):
+        for lidarNb in range(constants.nb_of_lidars):
             try:
                 self.lidars[lidarNb].get_health()  
             except:
@@ -111,16 +134,16 @@ class driverLidars:
         return 0
 
     def stop_motors(self):
-        for lidarNb in range(3):
+        for lidarNb in range(constants.nb_of_lidars):
             self.lidars[lidarNb].stop_motor()
         
     def start_motors(self):
-        for lidarNb in range(3):
+        for lidarNb in range(constants.nb_of_lidars):
             self.lidars[lidarNb].start_motor()
             time.sleep(0.25) # To avoid to drain too much current
     
     def wait_servos_moving(self):
-        for lidarNb in range(3):
+        for lidarNb in range(constants.nb_of_lidars):
             timeout = 100 # 10 seconds
             while True:
                 try:
@@ -137,12 +160,11 @@ class driverLidars:
         return 0
     
     def single_scan(self,current_angle_z,meas_nb,erase_file): 
-        
         file = []
         iterMeas = []
         datasLeft = []
         done = []
-        for lidarNb in range(3):
+        for lidarNb in range(constants.nb_of_lidars):
             try:
                 path = constants.dirPath + r'/DatasL' + str(lidarNb+1) + '.txt'
                 if erase_file == True:
@@ -154,7 +176,7 @@ class driverLidars:
                 self.disconnect()
                 return -1
             try:
-                iterMeas.append(self.lidars[lidarNb].iter_measurments())
+                iterMeas.append(self.lidars[lidarNb].iter_measures())
             except:
                 print('    Cannot communicate with lidar',lidarNb+1,'!')
                 return -1 
@@ -163,7 +185,7 @@ class driverLidars:
             
         try:  
             while False in done:
-                for lidarNb in range(3):
+                for lidarNb in range(constants.nb_of_lidars):
                     if done[lidarNb] == False:
                         datas = next(iterMeas[lidarNb])
                         angle = -1*(datas[2]-180)
@@ -179,7 +201,7 @@ class driverLidars:
             self.disconnect()
             return -1
         
-        for lidarNb in range(3):
+        for lidarNb in range(constants.nb_of_lidars):
             try:
                 self.lidars[lidarNb].stop()
             except:
@@ -206,7 +228,7 @@ class driverLidars:
         for i in range(len(inclination_array)):
             try:
                 # Broadcast moving action to all servos
-                self.serial_connection.goto(254,inclination_array[i],degrees=True)
+                inclination_array[i] = self.servos_goto(BROADCAST_ID,inclination_array[i])
             except:
                 print("    Problem with the serial connection!")
                 self.disconnect()
@@ -214,7 +236,7 @@ class driverLidars:
             
             if self.wait_servos_moving() != 0:
                 return -1
-            
+
             if i == 0:
                 if self.single_scan(inclination_array[i],nbMes_array[i],True) != 0:
                     return -1
@@ -232,7 +254,7 @@ class driverLidars:
         
         try:
             # Broadcast moving action to all servos
-            self.serial_connection.goto(254,0,degrees=True)
+            self.servos_goto(BROADCAST_ID,0)
         except:
             print("    Problem with the serial connection!")
             self.disconnect()

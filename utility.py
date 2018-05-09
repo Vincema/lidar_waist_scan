@@ -44,12 +44,24 @@ def euclidian_dist(a,b):
     
 
 def is_useful_data(pointXYZ):
-    # Is in the circle of 75% of the radius of the outter circle formed by the lidars 
+    # Is in the circle of 75% of the radius of the outter circle formed by the lidars
     if math.sqrt(pointXYZ.x**2 + pointXYZ.y**2) <= (constants.lidarsDist-constants.deadZone):
         # Is at the good height
         if pointXYZ.z >= patientHeight-constants.margin_bot and pointXYZ.z <= patientHeight+constants.margin_top:
             return True
     return False
+
+
+def hessian(x):
+    x_grad = np.gradient(x)
+    hessian = np.empty((x.ndim, x.ndim) + x.shape, dtype=x.dtype) 
+    for k, grad_k in enumerate(x_grad):
+        # iterate over dimensions
+        # apply gradient again to every component of the first derivative.
+        tmp_grad = np.gradient(grad_k) 
+        for l, grad_kl in enumerate(tmp_grad):
+            hessian[k, l, :, :] = grad_kl
+    return hessian
 
 
 def compute_circumference():
