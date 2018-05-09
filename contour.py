@@ -9,53 +9,53 @@ from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS_START = 5
+NB_OF_CTRL_POINTS_START = 4
 ORDER = 3
 GRID_STEP = 0.5  # mm
-NB_POINTS_BSPL_START = 200
+NB_POINTS_BSPL = 100
 APPROXIMATION_ERROR_TRESHOLD = 1
 APPROXIMATION_CONV_TRESHOLD = 0.1
-ITER_MAX = 50
+ITER_MAX = 10
 
 
 class bspline:
     def __init__(self,ctrl_pts):
         x = ctrl_pts[:,0]
         y = ctrl_pts[:,1]
-        self.update(np.array([x,y]))
-
-    def update(self,c):
-        self.c = c
-        self.n_c = len(c[0])
-        x = np.append(c[0],c[0,0:ORDER+1])
-        y = np.append(c[1],c[1,0:ORDER+1])
-        self.t = range(len(x))
+        self.n_c = len(x)
+        self.t = np.linspace(0,len(x)+ORDER+1-1,len(x)+ORDER+1)
         self.t_max = self.n_c
         self.t_min = 0.0
+        self.c = np.array([x,y])
+        self.update()
+
+    def update(self):
+        self.n_c = len(self.c[0])
         self.basis = []
         for i in range(self.n_c):
             self.basis.append(BSpline.basis_element(self.t[i:i+ORDER+2],False))
         # Rearrange the basis element because the i-th basis element defines the curve at the i-th+ORDER ctrl point
-        for i in range(ORDER):
+        for i in range(self.n_c-ORDER+1):
             self.basis.append(self.basis.pop(0))
-            
-        x = np.zeros(self.n_c)
-        y = np.zeros(self.n_c)
-        for i in range(self.n_c):
-            [x[i],y[i]] = self.estimate_with_basis(self.t[i])
 
+        n = NB_POINTS_BSPL
+        x = np.zeros(n)
+        y = np.zeros(n)
+        t = np.linspace(0,self.t_max,n)
+        for i in range(n):
+            [x[i],y[i]] = self.estimate_with_basis(t[i])
         x = np.append(x,x[0])
         y = np.append(y,y[0])
-        t2 = range(len(x))
-        self.bsplx = CubicSpline(t2,x,bc_type='periodic')
-        self.bsply = CubicSpline(t2,y,bc_type='periodic')
+        t = np.linspace(0,self.t_max,n+1,endpoint=True)
+        self.bsplx = CubicSpline(t,x,bc_type='periodic')
+        self.bsply = CubicSpline(t,y,bc_type='periodic')
         self.derx1 = self.bsplx.derivative(1)
         self.dery1 = self.bsply.derivative(1)
         self.derx2 = self.bsplx.derivative(2)
         self.dery2 = self.bsply.derivative(2)
 
         # Sample some values
-        self.sample_nb = int(NB_POINTS_BSPL_START*self.n_c/NB_OF_CTRL_POINTS_START)
+        self.sample_nb = NB_POINTS_BSPL
         self.sample_t = np.linspace(self.t_min,self.t_max,self.sample_nb)
         self.sample_values = np.zeros((self.sample_nb,2))
         for i in range(self.sample_nb):
@@ -98,10 +98,16 @@ class bspline:
     def add_ctrl_point(self,pos,points,tk,dist):
         pos = int(pos)
         c = self.c
-        new_ctrl_x = (c[0][(pos+1)%self.n_c] + c[0][pos]) / 2.0 
-        new_ctrl_y = (c[1][(pos+1)%self.n_c] + c[1][pos]) / 2.0
-        c = np.insert(c,(pos+1)%self.n_c,[new_ctrl_x,new_ctrl_y],axis=1)
-        return c
+        new_ctrl_x = self.estimate((self.t[pos]+self.t[pos+1])/2.0)[0]
+        new_ctrl_y = self.estimate((self.t[pos]+self.t[pos+1])/2.0)[1]
+        c = np.insert(c,pos+1,[new_ctrl_x,new_ctrl_y],axis=1)
+        self.c = c
+
+        t = self.t
+        new_t = (self.t[pos] + self.t[pos+1]) / 2.0
+        t = np.insert(t,pos+1,new_t)
+        self.t = t
+        
 
         """
         # Uses PERM method (http://mi.eng.cam.ac.uk/~cipolla/publications/article/1999-PAMI-bspline-fitting.pdf)
@@ -157,9 +163,12 @@ class bspline:
     def plot_curve(self,plot_ctrl_pts=False):
         u = np.linspace(self.t_min,self.t_max,self.sample_nb)
         pt = np.zeros((self.sample_nb,2))
+        pt2 = np.zeros((self.sample_nb,2))
         for i in range(self.sample_nb):
             pt[i] = self.estimate(u[i])
+            #pt2[i] = self.estimate_with_basis(u[i])
         plt.plot(pt[:,0],pt[:,1])
+        plt.plot(pt2[:,0],pt2[:,1],'.r')
         if plot_ctrl_pts:
             plt.plot(self.c[0],self.c[1])
 
@@ -186,7 +195,7 @@ def init_SDM(points):
     max_y = np.max(points[:,1])
     min_y = np.min(points[:,1])
     radius = np.max([max_x-min_x,max_y-min_y])/2 + 20
-    center= np.array([min_x+radius+10,min_y+radius-50])
+    center= np.array([min_x+radius-20,min_y+radius-20])
     n = NB_OF_CTRL_POINTS_START
     P = np.zeros((n,2))
     for i in range(n):
@@ -318,7 +327,9 @@ def compute_approx_error(points,bspl,tk,dist):
     m_i = np.zeros(bspl.n_c)
     d_i = np.zeros(bspl.n_c)
     for i in range(len(points)):
-        index = int(np.floor(tk[i]))
+        for j in range(bspl.n_c):
+            if tk[i] >= bspl.t[j] and tk[i] < bspl.t[j+1]:
+                index = j
         m_i[index] += 1
         d_i[index] += np.abs(dist[i])
 
@@ -364,11 +375,12 @@ def iter_SDM(points,bspl):
     iter_max = ITER_MAX
     nb_iter = 0
     temp_error = [math.inf,math.inf]
+    
+    # Compute points attributes
+    dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
+    
     while True:
-        nb_iter += 1
-        
-        # Compute points attributes
-        dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)    
+        nb_iter += 1    
         
         # Objective function minimization
         esd = np.zeros((2*bspl.n_c,2*bspl.n_c))
@@ -387,7 +399,7 @@ def iter_SDM(points,bspl):
 
         # Update spline
         P = move_ctrl_points(bspl,bspl.c,D,zeros)
-        bspl.update(P)
+        bspl.update()
 
         # Approximation error
         dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)   
@@ -409,7 +421,9 @@ def iter_SDM(points,bspl):
             # Add ctrl point
             print("New ctrl point added")
             P = bspl.add_ctrl_point(np.argmax(Ej),points,tk,dist)
-            bspl.update(P)
+            bspl.update()
+            # Compute points attributes
+            dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
 
         #bspl.plot_curve(True)
         #plt.show()
