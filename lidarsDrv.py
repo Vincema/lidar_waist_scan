@@ -39,7 +39,7 @@ def compute_angle_array_for_scan(height):
         angle = math.atan2(hgt1,dist1)
         dist2 = hgt2/math.tan(angle)
         currentDist += (dist2-dist1)
-        angle_array.append(angle*180/math.pi)
+        angle_array.append(-angle*180/math.pi)
         if dist2 > max_meas_dist:
             meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist)))
         else:
@@ -99,7 +99,6 @@ class driverLidars:
         self.areConnected = 0
 
     def servos_goto(self,servosID,position):
-        position *= -1
         cmd = np.polyval(p,position)
         if cmd <= constants.limit_cw_angle and cmd >= constants.limit_ccw_angle:
             sat_cmd = cmd
@@ -114,7 +113,7 @@ class driverLidars:
         self.serial_connection.goto(servosID,sat_cmd,degrees=True)
         print('Desired',position)
         print('Real',true_angle)
-        return true_angle
+        return -true_angle
 
     def check_link_state(self):
         for lidarNb in range(constants.nb_of_lidars):
@@ -188,7 +187,7 @@ class driverLidars:
                 for lidarNb in range(constants.nb_of_lidars):
                     if done[lidarNb] == False:
                         datas = next(iterMeas[lidarNb])
-                        angle = -1*(datas[2]-180)
+                        angle = -1*(datas[2]-constants.offset_angle_lidar)
                         dist = datas[3]
                         # First selection of points 
                         if angle >= -30 and angle <= +30 and dist > 0:

@@ -15,6 +15,9 @@ lidarsDist = 500
 # Height of lidars from the base
 lidarsHeight = 500
 
+# Size of the zone from the lidar where measurement can't be performed (mm)
+deadZone = 200
+
 # Bounds of plots
 boundsDatasLidars = [-600,
                      600,
@@ -23,6 +26,9 @@ boundsDatasLidars = [-600,
 
 # Nb of datas to retrieve for each lidar in total
 nbOfDatasToRetrieve = 200
+
+# Offset angle lidars
+offset_angle_lidar = 0
 
 # Serial port for Lidars
 serialPort = ['/dev/ttyUSB0',
@@ -33,7 +39,7 @@ serialPort = ['/dev/ttyUSB0',
 servosSpeed = 100
 
 # Servos IDs
-servosIDs = [3,2,4]
+servosIDs = [1,2,4]
 
 # Servos limit angle
 limit_ccw_angle = 0
@@ -42,9 +48,6 @@ limit_cw_angle = 90
 # Heights margin for scanning (arround the patient's height)
 margin_top = 10
 margin_bot = 10
-
-# Size of the zone from the lidar where measurement can't be performed (mm)
-deadZone = 100
 
 # Clustering constants
 deltaMinClust = 5   # Distance precision stop condition in mm
