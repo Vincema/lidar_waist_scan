@@ -3,19 +3,18 @@ import constants
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-import skfmm
+import copy
 from scipy.interpolate import BSpline, splev, splprep, splrep, CubicSpline
 from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS_START = 6
+NB_OF_CTRL_POINTS_START = 10
 ORDER = 3
 NB_POINTS_BSPL = 100
-APPROXIMATION_ERROR_TRESHOLD = 2
-APPROXIMATION_CONV_TRESHOLD = 0.5
-ITER_MAX = 1
-REGUL_WEIGHT = 0.0001
+APPROXIMATION_ERROR_TRESHOLD = 0.2
+ITER_MAX = 10
+REGUL_WEIGHT = 0.001
 
 
 class bspline:
@@ -97,8 +96,6 @@ class bspline:
     def add_ctrl_point(self,pos,points,tk,dist):
         pos = int(pos)
         c = self.c
-        #new_ctrl_x = self.estimate((self.t[pos]+self.t[pos+1])/2.0)[0]
-        #new_ctrl_y = self.estimate((self.t[pos]+self.t[pos+1])/2.0)[1]
         new_ctrl_x = (c[0][pos]+c[0][(pos+1)%self.n_c])/2.0
         new_ctrl_y = (c[1][pos]+c[1][(pos+1)%self.n_c])/2.0
         c = np.insert(c,pos+1,[new_ctrl_x,new_ctrl_y],axis=1)
@@ -120,7 +117,7 @@ class bspline:
         plt.plot(pt[:,0],pt[:,1],'k')
         #plt.plot(pt2[:,0],pt2[:,1],'.r')
         if plot_ctrl_pts:
-            plt.plot(self.c[0],self.c[1],'k')
+            plt.plot(self.c[0],self.c[1],'g')
             
 
 def init_SDM(points):
@@ -128,9 +125,7 @@ def init_SDM(points):
     min_x = np.min(points[:,0])
     max_y = np.max(points[:,1])
     min_y = np.min(points[:,1])
-    #radius = np.max([max_x-min_x,max_y-min_y])/2 + 20
-    #center= np.array([min_x+radius-20,min_y+radius-20])
-    radius = 150 #constants.lidarsDist
+    radius =  10 #constants.lidarsDist
     center = [0.0,0.0]
     n = NB_OF_CTRL_POINTS_START
     P = np.zeros((n,2))
@@ -140,50 +135,69 @@ def init_SDM(points):
 
 
 def find_tk_foot_point(bspl,point):
-    dist = np.zeros(bspl.sample_nb)
-    for i in range(bspl.sample_nb):
-        dist[i] = np.linalg.norm(bspl.sample_values[i]-point)
-    tk = bspl.sample_t[np.argmin(dist)]
-    """
-    start = time.time() 
-    end = time.time()
-    print(end - start)
-    """
+    closest_index = distance.cdist([point], bspl.sample_values).argmin()
+    tk = bspl.sample_t[closest_index]
     return tk
+   
+    iter_max = 100
+    iter_nb = 0
+    epsi_deri = 1*10**(-6)
+    epsi = 0.001
+    a = bspl.sample_t[closest_index-1]
+    b = bspl.sample_t[(closest_index+1)%bspl.sample_nb]
+
+    def fun(x):
+        pt1_tk = bspl.estimate(x)
+        pt2_tk = bspl.estimate(x+epsi_deri)
+        d1 = utility.euclidian_dist(pt1_tk,point)
+        d2 = utility.euclidian_dist(pt2_tk,point)
+        y = (d2-d1)/epsi_deri
+        return y
+        
+    # Dichotomy
+    while iter_nb < iter_max or b-a > epsi:
+        iter_nb += 1
+        m = (a+b)/2
+        if fun(a)*fun(m) < 0:
+            b = m
+        else:
+            a = m
+    return bspl.modulo_tk(tk)
 
 
 def squared_dist(esd,const,dist,rad,Ta_tk,No_tk,tk,neigh,bspl,point):
     # Basis elements
     b_terms = bspl.get_basis(tk)
-        
+
     #plt.plot([neigh[0],neigh[0]+dist*No_tk[0]],[neigh[1],neigh[1]+dist*No_tk[1]],'k')
     # SDM
-    prodNeighPtNorm = (neigh-point)[0]*No_tk[0] + (neigh-point)[1]*No_tk[1]
-    if dist >= 0 and dist < rad:
+    prodNeighPtNorm = -dist*No_tk[0]**2 + -dist*No_tk[1]**2 #(neigh[0]-point[0])*No_tk[0] + (neigh[1]-point[1])*No_tk[1]
+    if (dist >= 0 and dist < rad) or dist < 0:
         for i in range(bspl.n_c):
             for j in range(bspl.n_c):
                 temp = b_terms[i]*b_terms[j]
-                esd[i+0][j+0]               += temp*(No_tk[0]**2)    
+                esd[i+0][j+0]               += temp*(No_tk[0]**2) 
                 esd[i+0][j+bspl.n_c]        += temp*No_tk[0]*No_tk[1]
-                esd[i+bspl.n_c][j+0]        += temp*No_tk[0]*No_tk[1]
-                esd[i+bspl.n_c][j+bspl.n_c] += temp*(No_tk[1]**2)
+                esd[i+bspl.n_c][j+0]        += temp*No_tk[0]*No_tk[1] 
+                esd[i+bspl.n_c][j+bspl.n_c] += temp*(No_tk[1]**2) 
             const[i+0]        -= b_terms[i]*No_tk[0]*prodNeighPtNorm
             const[i+bspl.n_c] -= b_terms[i]*No_tk[1]*prodNeighPtNorm
-    elif dist < 0:
-        prodNeighPtTang = (neigh-point)[0]*Ta_tk[0] + (neigh-point)[1]*Ta_tk[1]
-        for i in range(bspl.n_c):
-            for j in range(bspl.n_c):
-                temp = b_terms[i]*b_terms[j] 
-                esd[i+0][j+0]               += temp*(dist/(dist-rad))*(Ta_tk[0]**2) + temp*(No_tk[0]**2)
-                esd[i+0][j+bspl.n_c]        += temp*(dist/(dist-rad))*Ta_tk[0]*Ta_tk[1] + temp*No_tk[0]*No_tk[1]
-                esd[i+bspl.n_c][j+0]        += temp*(dist/(dist-rad))*Ta_tk[0]*Ta_tk[1] + temp*No_tk[0]*No_tk[1]
-                esd[i+bspl.n_c][j+bspl.n_c] += temp*(dist/(dist-rad))*(Ta_tk[1]**2) + temp*(No_tk[1]**2)
-            const[i+0]        -= ((dist/(dist-rad))*b_terms[i]*Ta_tk[0]*prodNeighPtTang + b_terms[i]*No_tk[0]*prodNeighPtNorm)
-            const[i+bspl.n_c] -= ((dist/(dist-rad))*b_terms[i]*Ta_tk[1]*prodNeighPtTang + b_terms[i]*No_tk[1]*prodNeighPtNorm)
+            
+        if dist < 0:
+            prodNeighPtTang = 0.0 #(neigh[0]-point[0])*Ta_tk[0] + (neigh[1]-point[1])*Ta_tk[1]
+            dist_distRad = dist/(dist-rad)
+            for i in range(bspl.n_c):
+                for j in range(bspl.n_c):
+                    temp = b_terms[i]*b_terms[j] 
+                    esd[i+0][j+0]               += temp*dist_distRad*(Ta_tk[0]**2)
+                    esd[i+0][j+bspl.n_c]        += temp*dist_distRad*Ta_tk[0]*Ta_tk[1]
+                    esd[i+bspl.n_c][j+0]        += temp*dist_distRad*Ta_tk[0]*Ta_tk[1] 
+                    esd[i+bspl.n_c][j+bspl.n_c] += temp*dist_distRad*(Ta_tk[1]**2)
+                const[i+0]        -= 0.0 #dist_distRad*b_terms[i]*Ta_tk[0]*prodNeighPtTang 
+                const[i+bspl.n_c] -= 0.0 #dist_distRad*b_terms[i]*Ta_tk[1]*prodNeighPtTang
     else:
-        print("Error rad > dist: ",dist,'>',rad)
-        plt.show()
-        exit()
+        print("Error rad < dist: ",rad,'<',dist)
+        raise
 
     return esd,const
 
@@ -202,7 +216,7 @@ def mark_zeros_line(bspl,esd,tresh):
             cpt+=1
     if cpt < 2:
         print("Cannot minimize SD error!")
-        exit(1)
+        raise
     return zeros
 
 
@@ -261,23 +275,9 @@ def move_ctrl_points(bspl,P,D,zeros):
     return P
             
 
-def compute_approx_error(points,bspl,tk,dist):
-    m_i = np.zeros(bspl.n_c)
-    d_i = np.zeros(bspl.n_c)
-    for i in range(len(points)):
-        for j in range(bspl.n_c):
-            if tk[i] >= bspl.t[j] and tk[i] < bspl.t[j+1]:
-                index = j
-        m_i[index] += 1
-        d_i[index] += np.abs(dist[i])
-
-    Ej = np.zeros(bspl.n_c)
-    for i in range(bspl.n_c):
-        if m_i[i] > 0:
-            Ej[i] = (1/m_i[i])*d_i[i]
-        else:
-            Ej[i] = 0
-    return Ej
+def compute_approx_error(dist):
+    n = len(dist)
+    return np.sqrt((1/n)*np.sum(dist**2))
 
 
 def compute_points_attributes(points,bspl):
@@ -310,8 +310,15 @@ def compute_points_attributes(points,bspl):
     return dist,rad,Ta_tk,No_tk,tk,neigh
 
 def compute_regularization(bspl):
+    n = bspl.n_c
+    const = np.zeros(2*n)
+    reg = np.zeros((2*n,2*n))
+    return reg,const
+
     """
     n = bspl.n_c
+    const = np.zeros(2*n)
+    reg = np.zeros((2*n,2*n))
     k = ORDER
     t = bspl.t
     P_x = bspl.c[0]
@@ -324,21 +331,20 @@ def compute_regularization(bspl):
         a[i] = 1.0 / ((t[i+k]-t[i+2])*(t[i+k+1]-t[i+2]))
         c[i] = 1.0 / ((t[i+k]-t[i+2])*(t[i+k]-t[i+1]))
 
-    nb_values_integ = 100 
+    nb_values_integ = 20 
     integ_x = np.linspace(t[0],t[-1],nb_values_integ)
     spacing = integ_x[1] - integ_x[0]
     for i in range(n):
         for j in range(n):
+            prev = 0.0
             for m in integ_x:
                 b = bspl.get_basis(m)
-                I[i][j] += ( a[(i-2)%n]*b[(i-2)%n]*b[j]
-                             -(a[(i-1)%n]+c[(i-1)%n])*b[(i-1)%n]*b[j]
-                             +c[i]*b[i]*b[j] ) * spacing
-    """
-    n = bspl.n_c
-    const = np.zeros(2*n)
-    reg = np.zeros((2*n,2*n))
-    """    
+                temp = ( a[(i-2)%n]*b[(i-2)%n]*b[j]
+                         -(a[(i-1)%n]+c[(i-1)%n])*b[(i-1)%n]*b[j]
+                         +c[i]*b[i]*b[j] )
+                I[i][j] += (temp + prev) * spacing / 2.0
+                prev = temp
+  
     temp1 = 2*((k-1)**2)*((k-2)**2)
     for i in range(n):
         temp2_x = 0
@@ -356,21 +362,36 @@ def compute_regularization(bspl):
             reg[i+0][j+n] = 0
             reg[i+n][j+0] = 0
             reg[i+n][j+n] = temp1*temp3
-    """
     return reg,const
-    
+    """
     
 def iter_SDM(points,bspl):
     iter_max = ITER_MAX
     nb_iter = 0
-    temp_error = [math.inf,math.inf]
+    temp_approx_error = math.inf
     
-    # Compute points attributes
-    dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
+    while True:  
+        # Compute point attributes
+        dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
     
-    while True:
-        nb_iter += 1    
-        
+        # Approximation error
+        approx_error = compute_approx_error(dist)
+        print("Fit average error: ", approx_error)
+
+        # Stop condition
+        epsi_approx_error = APPROXIMATION_ERROR_TRESHOLD
+        if approx_error <= epsi_approx_error:
+            break
+        if approx_error >= temp_approx_error:
+            bspl = temp_bspl
+            break 
+        if nb_iter >= iter_max:
+            break
+
+        # Temp variables
+        temp_approx_error = approx_error
+        temp_bspl = copy.copy(bspl)
+
         # Objective function minimization
         esd = np.zeros((2*bspl.n_c,2*bspl.n_c))
         const = np.zeros(2*bspl.n_c)
@@ -386,41 +407,15 @@ def iter_SDM(points,bspl):
         fsd,const = apply_zeros_constraints(bspl,fsd,const,zeros)
 
         # System solving
-        D = lstsq(fsd,const)[0]
+        D = solve(fsd,const)
 
         # Update spline
         P = move_ctrl_points(bspl,bspl.c,D,zeros)
         bspl.update()
-
-        # Approximation error
-        dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)   
-        Ej = compute_approx_error(points,bspl,tk,dist)
-        approx_error = (1/bspl.n_c)*np.sum(Ej)
-        temp_error[1] = temp_error[0]
-        temp_error[0] = approx_error 
-        print(approx_error)
-
-        # Stop condition
-        epsi_approx_error = APPROXIMATION_ERROR_TRESHOLD
-        epsi_convergence = APPROXIMATION_CONV_TRESHOLD
-        if approx_error <= epsi_approx_error:
-            break
-        if nb_iter >= iter_max:
-            break
-        #if np.abs(temp_error[1]-temp_error[0]) <= epsi_convergence:
-        #temp_error = [math.inf,math.inf]
-        # Add ctrl point
-        #print("New ctrl point added")
-        #bspl.plot_curve(True)
-        #P = bspl.add_ctrl_point(np.argmax(Ej),points,tk,dist)
-        #bspl.update()
-        #dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
-        #bspl.plot_curve(True)
+        #bspl.plot_curve()
         #plt.show()
 
-        #bspl.plot_curve(True)
-        #plt.show()
-
+        nb_iter += 1  
     return bspl
 
 
@@ -429,28 +424,27 @@ def SDM_algorithm(points):
     
     # Evaluate bspline
     bspl = bspline(P)
-    bspl.plot_curve(True)
+    #bspl.plot_curve(True)
 
     try:
         bspl = iter_SDM(points,bspl)
     except:
         print("An error occured")
-    bspl.plot_curve(True)
+    bspl.plot_curve(False)
 
 def contour():
     datas = utility.mergedPointsXY
     points = np.zeros((len(datas),2))
 
-    #radius = constants.lidarsDist*0.9
-    #center = [0.0,0.0]
-    #n = NB_POINTS_BSPL
-    #points = np.zeros((n,2))
-    #for i in range(n):
-    #    points[i] = np.array([radius*np.cos(i*2.0*math.pi/n)+center[0],radius*np.sin(i*2.0*math.pi/n)+center[1]])
-    #plt.plot(points[:,0],points[:,1],'xg')
-
-    
     for i in range(len(datas)):
         points[i] = [datas[i].x,datas[i].y]
+
+    #radius = constants.lidarsDist*0.9
+    #center = [0.0,0.0]
+    #n = 0
+    #for i in range(len(datas),len(datas)+n):
+    #    points[i] = np.array([radius*np.cos(i*2.0*math.pi/n)+center[0],radius*np.sin(i*2.0*math.pi/n)+center[1]])
+    #plt.plot(points[:,0],points[:,1],'.b')
+
     
     SDM_algorithm(points)

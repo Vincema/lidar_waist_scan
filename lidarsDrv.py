@@ -111,8 +111,8 @@ class driverLidars:
             
             true_angle = np.roots(np.append(p[0:-1],p[-1]-sat_cmd))[1]
         self.serial_connection.goto(servosID,sat_cmd,degrees=True)
-        print('Desired',position)
-        print('Real',true_angle)
+        #print('Desired',position)
+        #print('Real',true_angle)
         return -true_angle
 
     def check_link_state(self):
@@ -187,7 +187,7 @@ class driverLidars:
                 for lidarNb in range(constants.nb_of_lidars):
                     if done[lidarNb] == False:
                         datas = next(iterMeas[lidarNb])
-                        angle = -1*(datas[2]-constants.offset_angle_lidar)
+                        angle = -1*((datas[2]+constants.offset_angle_lidar)%360 - 180.0)
                         dist = datas[3]
                         # First selection of points 
                         if angle >= -30 and angle <= +30 and dist > 0:
