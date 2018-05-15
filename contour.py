@@ -9,11 +9,11 @@ from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS_START = 10
+NB_OF_CTRL_POINTS_START = 20
 ORDER = 3
 NB_POINTS_BSPL = 100
 APPROXIMATION_ERROR_TRESHOLD = 0.2
-ITER_MAX = 10
+ITER_MAX = 1
 REGUL_WEIGHT = 0.001
 
 
@@ -93,27 +93,13 @@ class bspline:
         tk = self.modulo_tk(tk)
         return np.array([self.derx2(tk),self.dery2(tk)])
 
-    def add_ctrl_point(self,pos,points,tk,dist):
-        pos = int(pos)
-        c = self.c
-        new_ctrl_x = (c[0][pos]+c[0][(pos+1)%self.n_c])/2.0
-        new_ctrl_y = (c[1][pos]+c[1][(pos+1)%self.n_c])/2.0
-        c = np.insert(c,pos+1,[new_ctrl_x,new_ctrl_y],axis=1)
-        self.c = c
-
-        t = self.t
-        new_t = (self.t[pos] + self.t[pos+1]) / 2.0
-        t = np.insert(t,pos+1,new_t)
-        self.t = t
-    
-
     def plot_curve(self,plot_ctrl_pts=False):
         u = np.linspace(self.t_min,self.t_max,self.sample_nb)
         pt = np.zeros((self.sample_nb,2))
-        pt2 = np.zeros((self.sample_nb,2))
+        #pt2 = np.zeros((self.sample_nb,2))
         for i in range(self.sample_nb):
             pt[i] = self.estimate(u[i])
-            pt2[i] = self.estimate_with_basis(u[i])
+            #pt2[i] = self.estimate_with_basis(u[i])
         plt.plot(pt[:,0],pt[:,1],'k')
         #plt.plot(pt2[:,0],pt2[:,1],'.r')
         if plot_ctrl_pts:
@@ -121,16 +107,28 @@ class bspline:
             
 
 def init_SDM(points):
-    max_x = np.max(points[:,0])
-    min_x = np.min(points[:,0])
-    max_y = np.max(points[:,1])
-    min_y = np.min(points[:,1])
-    radius =  10 #constants.lidarsDist
-    center = [0.0,0.0]
+    origin,radius = utility.fit_circle(points)
+
     n = NB_OF_CTRL_POINTS_START
+    n_sect = np.zeros(n)
+    mean_sect = np.zeros(n)
+    amin = np.zeros(n)
+    amid = np.zeros(n)
+    amax = np.zeros(n)
+    for i in range(n):
+        amin[i] = 2*math.pi*i/n 
+        amid[i] = 2*math.pi*(i+0.5)/n 
+        amax[i] = 2*math.pi*(i+1)/n
+    for i in range(len(points)):
+        angle = np.arctan2(points[i][1]-origin[1],points[i][0]-origin[0]) % (2*math.pi)
+        for j in range(n):
+            if amin[j] <= angle and angle < amax[j]:
+                n_sect[j] += 1.0
+                mean_sect[j] += utility.euclidian_dist(points[i],origin)
+    mean_sect /= n_sect
     P = np.zeros((n,2))
     for i in range(n):
-        P[i] = [radius*np.cos(i*2*math.pi/n)+center[0],radius*np.sin(i*2*math.pi/n)+center[1]]
+        P[i] = [origin[0]+(np.cos(amid[i])*mean_sect[i]),origin[1]+(np.sin(amid[i])*mean_sect[i])]
     return P
 
 
@@ -371,22 +369,25 @@ def iter_SDM(points,bspl):
     temp_approx_error = math.inf
     
     while True:  
+        # Stop condition
+        if nb_iter >= iter_max:
+            break
+
         # Compute point attributes
         dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
     
         # Approximation error
         approx_error = compute_approx_error(dist)
-        print("Fit average error: ", approx_error)
+        if nb_iter > 0:
+            print("    Fit average error: ", approx_error)
 
-        # Stop condition
+        # Stop conditions
         epsi_approx_error = APPROXIMATION_ERROR_TRESHOLD
         if approx_error <= epsi_approx_error:
             break
-        if approx_error >= temp_approx_error:
-            bspl = temp_bspl
-            break 
-        if nb_iter >= iter_max:
-            break
+        #if approx_error >= temp_approx_error:
+        #    bspl = temp_bspl
+        #    break 
 
         # Temp variables
         temp_approx_error = approx_error
@@ -425,12 +426,22 @@ def SDM_algorithm(points):
     # Evaluate bspline
     bspl = bspline(P)
     #bspl.plot_curve(True)
-
+    #plt.show()
+    
     try:
         bspl = iter_SDM(points,bspl)
     except:
         print("An error occured")
     bspl.plot_curve(False)
+    return bspl
+
+def compute_circumference(bspl):
+    n = 1000
+    t = np.linspace(bspl.t_min,bspl.t_max,n,endpoint=True)
+    circ = 0.0
+    for i in range(n-1):
+        circ += utility.euclidian_dist(bspl.estimate(t[i]),bspl.estimate(t[i+1]))
+    return circ
 
 def contour():
     datas = utility.mergedPointsXY
@@ -439,12 +450,9 @@ def contour():
     for i in range(len(datas)):
         points[i] = [datas[i].x,datas[i].y]
 
-    #radius = constants.lidarsDist*0.9
-    #center = [0.0,0.0]
-    #n = 0
-    #for i in range(len(datas),len(datas)+n):
-    #    points[i] = np.array([radius*np.cos(i*2.0*math.pi/n)+center[0],radius*np.sin(i*2.0*math.pi/n)+center[1]])
-    #plt.plot(points[:,0],points[:,1],'.b')
+    bspl = SDM_algorithm(points)
+    circum = compute_circumference(bspl)
+
+    print('\nCircumference: ',format(circum, '.2f'),'mm')
 
     
-    SDM_algorithm(points)

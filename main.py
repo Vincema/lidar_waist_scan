@@ -90,9 +90,6 @@ def compute_algo_circumference():
         # Compute contour
         contour.contour()
 
-        # Compute circumference
-        utility.compute_circumference()
-
         # Show the plots
         print('\nClose all figures to continue...\n')
         plt.show(block=True)
