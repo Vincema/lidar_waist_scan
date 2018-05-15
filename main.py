@@ -27,7 +27,6 @@ def disp_menu():
     
 def execute_actions():
     choice = input('    Waiting for input: ')
-    #choice = '3'
     if choice == 'q' or choice == 'Q':
         if drv.areConnected == 1:
             drv.disconnect()

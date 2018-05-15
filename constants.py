@@ -25,10 +25,10 @@ boundsDatasLidars = [-600,
                      600]
 
 # Nb of datas to retrieve for each lidar in total
-nbOfDatasToRetrieve = 200
+nbOfDatasToRetrieve = 500
 
 # Offset angle lidars
-offset_angle_lidar = 0
+offset_angle_lidar = 180
 
 # Serial port for Lidars
 serialPort = ['/dev/ttyUSB0',
@@ -36,7 +36,7 @@ serialPort = ['/dev/ttyUSB0',
               '/dev/ttyUSB2']
 
 # Speed of servos (0-254)
-servosSpeed = 100
+servosSpeed = 50
 
 # Servos IDs
 servosIDs = [1,2,4]
