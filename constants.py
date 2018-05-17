@@ -16,7 +16,7 @@ lidarsDist = 500
 lidarsHeight = 500
 
 # Size of the zone from the lidar where measurement can't be performed (mm)
-deadZone = 200
+deadZone = 100
 
 # Bounds of plots
 boundsDatasLidars = [-600,
@@ -25,7 +25,7 @@ boundsDatasLidars = [-600,
                      600]
 
 # Nb of datas to retrieve for each lidar in total
-nbOfDatasToRetrieve = 500
+nbOfDatasToRetrieve = 400
 
 # Offset angle lidars
 offset_angle_lidar = 180
