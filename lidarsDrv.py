@@ -77,7 +77,7 @@ class driverLidars:
                 # Try to ping the motor
                 if self.serial_connection.ping(constants.servosIDs[lidarNb]) == False:
                     raise
-                self.serial_connection.set_speed(constants.servosIDs[lidarNb],constants.servosSpeed)
+                self.serial_connection.set_speed(BROADCAST_ID,constants.servosSpeed)
                 self.servos_goto(constants.servosIDs[lidarNb],0)
             except:
                 print('    Cannot connect to the servo',lidarNb+1,'!')
