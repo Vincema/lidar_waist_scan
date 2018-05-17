@@ -9,9 +9,9 @@ from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS_START = 15
+NB_OF_CTRL_POINTS_START = 10
 ORDER = 3
-NB_POINTS_BSPL = 100
+NB_POINTS_BSPL = 10*NB_OF_CTRL_POINTS_START
 APPROXIMATION_ERROR_TRESHOLD = 2.0
 ITER_MAX = 1
 REGUL_WEIGHT = 0.001
@@ -180,39 +180,58 @@ def find_tk_foot_point(bspl,point):
     return bspl.modulo_tk(tk)
 
 
-def squared_dist(esd,const,dist,rad,Ta_tk,No_tk,tk,neigh,bspl,point):
-    # Basis elements
-    b_terms = bspl.get_basis(tk)
+def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
+    esd = np.zeros((2*bspl.n_c,2*bspl.n_c))
+    const = np.zeros(2*bspl.n_c)
+    
+    for k in range(len(points)):
+        # Basis elements
+        b_terms = bspl.get_basis(tk[k])
 
-    #plt.plot([neigh[0],neigh[0]+dist*No_tk[0]],[neigh[1],neigh[1]+dist*No_tk[1]],'k')
-    # SDM
-    prodNeighPtNorm = -dist*No_tk[0]**2 + -dist*No_tk[1]**2 #(neigh[0]-point[0])*No_tk[0] + (neigh[1]-point[1])*No_tk[1]
-    if (dist >= 0 and dist < rad) or dist < 0:
-        for i in range(bspl.n_c):
-            for j in range(bspl.n_c):
-                temp = b_terms[i]*b_terms[j]
-                esd[i+0][j+0]               += temp*(No_tk[0]**2) 
-                esd[i+0][j+bspl.n_c]        += temp*No_tk[0]*No_tk[1]
-                esd[i+bspl.n_c][j+0]        += temp*No_tk[0]*No_tk[1] 
-                esd[i+bspl.n_c][j+bspl.n_c] += temp*(No_tk[1]**2) 
-            const[i+0]        -= b_terms[i]*No_tk[0]*prodNeighPtNorm
-            const[i+bspl.n_c] -= b_terms[i]*No_tk[1]*prodNeighPtNorm
-            
-        if dist < 0:
-            prodNeighPtTang = 0.0 #(neigh[0]-point[0])*Ta_tk[0] + (neigh[1]-point[1])*Ta_tk[1]
-            dist_distRad = dist/(dist-rad)
+        # SDM
+        if dist[k] >= 0 and dist[k] < rad[k]:
+            neigh_pt_norm = -dist[k]*No_tk[k,0]**2 + -dist[k]*No_tk[k,1]**2 #(neigh[0]-point[0])*No_tk[0] + (neigh[1]-point[1])*No_tk[1]
+            neigh_pt_norm_Nox = neigh_pt_norm * No_tk[k,0]
+            neigh_pt_norm_Noy = neigh_pt_norm * No_tk[k,1]
+            Nox_Nox = No_tk[k,0]**2
+            Nox_Noy = No_tk[k,0]*No_tk[k,1]
+            Noy_Noy = No_tk[k,1]**2
+
             for i in range(bspl.n_c):
                 for j in range(bspl.n_c):
-                    temp = b_terms[i]*b_terms[j] 
-                    esd[i+0][j+0]               += temp*dist_distRad*(Ta_tk[0]**2)
-                    esd[i+0][j+bspl.n_c]        += temp*dist_distRad*Ta_tk[0]*Ta_tk[1]
-                    esd[i+bspl.n_c][j+0]        += temp*dist_distRad*Ta_tk[0]*Ta_tk[1] 
-                    esd[i+bspl.n_c][j+bspl.n_c] += temp*dist_distRad*(Ta_tk[1]**2)
-                const[i+0]        -= 0.0 #dist_distRad*b_terms[i]*Ta_tk[0]*prodNeighPtTang 
-                const[i+bspl.n_c] -= 0.0 #dist_distRad*b_terms[i]*Ta_tk[1]*prodNeighPtTang
-    else:
-        print("Error rad < dist: ",rad,'<',dist)
-        raise
+                    bi_bj = b_terms[i]*b_terms[j]
+                    esd[i][j]                   += bi_bj*Nox_Nox
+                    esd[i][j+bspl.n_c]          += bi_bj*Nox_Noy
+                    esd[i+bspl.n_c][j]          += bi_bj*Nox_Noy 
+                    esd[i+bspl.n_c][j+bspl.n_c] += bi_bj*Noy_Noy
+                const[i]          -= b_terms[i]*neigh_pt_norm_Nox
+                const[i+bspl.n_c] -= b_terms[i]*neigh_pt_norm_Noy
+                
+        elif dist[k] < 0:
+            neigh_pt_norm = -dist[k]*No_tk[k,0]**2 + -dist[k]*No_tk[k,1]**2 #(neigh[0]-point[0])*No_tk[0] + (neigh[1]-point[1])*No_tk[1]
+            neigh_pt_norm_Nox = neigh_pt_norm * No_tk[k,0]
+            neigh_pt_norm_Noy = neigh_pt_norm * No_tk[k,1]
+            # prodNeighPtTang = 0.0 #(neigh[0]-point[0])*Ta_tk[0] + (neigh[1]-point[1])*Ta_tk[1]
+            dist_distRad = dist[k]/(dist[k]-rad[k])
+            dist_distRad_Tax_Tax = dist_distRad * (Ta_tk[k,0]**2)
+            dist_distRad_Tax_Tay = dist_distRad * Ta_tk[k,0]*Ta_tk[k,1]
+            dist_distRad_Tay_Tay = dist_distRad * (Ta_tk[k,1]**2)
+            Nox_Nox = No_tk[k,0]**2
+            Nox_Noy = No_tk[k,0]*No_tk[k,1]
+            Noy_Noy = No_tk[k,1]**2
+            
+            for i in range(bspl.n_c):
+                for j in range(bspl.n_c):
+                    bi_bj = b_terms[i]*b_terms[j] 
+                    esd[i][j]                   += bi_bj*dist_distRad_Tax_Tax + bi_bj*Nox_Nox
+                    esd[i][j+bspl.n_c]          += bi_bj*dist_distRad_Tax_Tay + bi_bj*Nox_Noy
+                    esd[i+bspl.n_c][j]          += bi_bj*dist_distRad_Tax_Tay + bi_bj*Nox_Noy
+                    esd[i+bspl.n_c][j+bspl.n_c] += bi_bj*dist_distRad_Tay_Tay + bi_bj*Noy_Noy 
+                const[i]          -= b_terms[i]*neigh_pt_norm_Nox  #dist_distRad*b_terms[i]*Ta_tk[0]*prodNeighPtTang 
+                const[i+bspl.n_c] -= b_terms[i]*neigh_pt_norm_Noy  #dist_distRad*b_terms[i]*Ta_tk[1]*prodNeighPtTang
+        else:
+            print("Error rad < dist: ",rad,'<',dist)
+            raise
 
     return esd,const
 
@@ -389,7 +408,7 @@ def iter_SDM(points,bspl):
         # Stop condition
         if nb_iter >= iter_max:
             break
-
+        
         # Compute point attributes
         dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
     
@@ -402,19 +421,16 @@ def iter_SDM(points,bspl):
         epsi_approx_error = APPROXIMATION_ERROR_TRESHOLD
         if approx_error <= epsi_approx_error:
             break
-        #if approx_error >= temp_approx_error:
-        #    bspl = temp_bspl
-        #    break 
+        if approx_error >= temp_approx_error:
+            bspl = temp_bspl
+            break 
 
         # Temp variables
         temp_approx_error = approx_error
         temp_bspl = copy.copy(bspl)
 
         # Objective function minimization
-        esd = np.zeros((2*bspl.n_c,2*bspl.n_c))
-        const = np.zeros(2*bspl.n_c)
-        for i in range(len(points)):
-            esd,esd_const = squared_dist(esd,const,dist[i],rad[i],Ta_tk[i],No_tk[i],tk[i],neigh[i],bspl,points[i])
+        esd,esd_const = squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points)
         reg,reg_const = compute_regularization(bspl)
 
         fsd = 0.5*esd + REGUL_WEIGHT*reg
@@ -445,10 +461,10 @@ def SDM_algorithm(points):
     #bspl.plot_curve(True)
     #plt.show()
     
-    try:
-        bspl = iter_SDM(points,bspl)
-    except:
-        print("An error occured")
+    #try:
+    bspl = iter_SDM(points,bspl)
+    #except:
+    #    print("An error occured")
     bspl.plot_curve(False)
     return bspl
 

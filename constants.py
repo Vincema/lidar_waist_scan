@@ -25,7 +25,7 @@ boundsDatasLidars = [-600,
                      600]
 
 # Nb of datas to retrieve for each lidar in total
-nbOfDatasToRetrieve = 400
+nbOfDatasToRetrieve = 300
 
 # Offset angle lidars
 offset_angle_lidar = 180
@@ -36,7 +36,7 @@ serialPort = ['/dev/ttyUSB0',
               '/dev/ttyUSB2']
 
 # Speed of servos (0-254)
-servosSpeed = 50
+servosSpeed = 100
 
 # Servos IDs
 servosIDs = [1,2,4]
@@ -46,8 +46,8 @@ limit_ccw_angle = 0
 limit_cw_angle = 90
 
 # Heights margin for scanning (arround the patient's height)
-margin_top = 10
-margin_bot = 10
+margin_top = 50
+margin_bot = 50
 
 # Clustering constants
 deltaMinClust = 5   # Distance precision stop condition in mm

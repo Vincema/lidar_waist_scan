@@ -103,36 +103,49 @@ def get_points_biggest_cluster(points,v1,v2):
     return points
 
 
-def ccw(A,B,C):
-    return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
-
 # Return true if line segments AB and CD intersect
 def intersect(A,B,C,D):
+    def ccw(A,B,C):
+        return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
+    
     return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
 
 
 def gabriel_graph(points):
     tri = Delaunay(points)
     vor = Voronoi(points)
+
+    class ind_points_to_vertices:
+        def __init__(self):
+            self.dest_point = []
+            self.vertice_index = []
+
+    ind_points_to_vertices_arr = []
+    for i in range(len(points)):
+        ind_points_to_vertices_arr.append(ind_points_to_vertices())
+
+    for i in range(len(vor.ridge_points)):
+        ind1 = vor.ridge_points[i][0]
+        ind2 = vor.ridge_points[i][1]
+        ind_points_to_vertices_arr[ind1].dest_point.append(ind2)
+        ind_points_to_vertices_arr[ind1].vertice_index.append(i)
+        ind_points_to_vertices_arr[ind2].dest_point.append(ind1)
+        ind_points_to_vertices_arr[ind2].vertice_index.append(i)
+
     ind_edges = []
-    #ind_edges2 = []
     dist = np.array([])
-    ind = list(range(len(vor.ridge_points)))
     for i in range(len(tri.simplices)):
         for j in range(3):
             ind1 = tri.simplices[i][j]
             ind2 = tri.simplices[i][(j+1)%3]
-            for k in ind:
-                if ((ind1 == vor.ridge_points[k][0] and ind2 == vor.ridge_points[k][1])
-                    or (ind2 == vor.ridge_points[k][0] and ind1 == vor.ridge_points[k][1])):
-                    a,b = vor.vertices[vor.ridge_vertices[k]]
+            for k in range(len(ind_points_to_vertices_arr[ind1].dest_point)):
+                if ind2 == ind_points_to_vertices_arr[ind1].dest_point[k]:
+                    ind_vert = ind_points_to_vertices_arr[ind1].vertice_index[k]
+                    a,b = vor.vertices[vor.ridge_vertices[ind_vert]]
                     if intersect(a,b,points[ind1],points[ind2]) == True:
                         ind_edges.append([ind1,ind2])
                         distance = euclidian_dist(points[ind1],points[ind2])
                         dist = np.append(dist,distance)
-                    #else:
-                    #    ind_edges2.append([ind1,ind2])
-                    ind.remove(k)
                     break
 
     ind_edges = np.asarray(ind_edges)
@@ -206,7 +219,6 @@ def remove_outliers():
         clusteredPointsXY.append(point(points[i][0],points[i][1]))
     
         
-
 
 
 
