@@ -54,9 +54,9 @@ def disp_menu():
             print('    Wrong ID!')
             
     elif choice == '3':
-        choice = input('    Speed (1 to 254): ')
+        choice = input('    Speed (1 to 1023): ')
         newSpeed = int(choice)
-        if newSpeed >= 1 and newSpeed <= 254:
+        if newSpeed >= 1 and newSpeed <= 1023:
             servos.set_speed(254,newSpeed)
         else:
             print('    Wrong speed!')
