@@ -53,6 +53,7 @@ class setOfLidars:
             self.lidarsSet[i].save_datas(datas,hgt)
 
     def plot_origin_and_lidars_2D(self):
+        plt.figure(utility.figMerge)
         plt.plot([0],[0],'cx',ms=5,mew=2)
         lidarPosPointsX = []
         lidarPosPointsY = []
