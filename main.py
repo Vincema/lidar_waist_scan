@@ -85,8 +85,11 @@ def compute_algo_circumference():
 
     # Compute raw datas into merged datas
     lidarsSet.compute_raw_datas()
+
+    # Remove outliers
+    utility.remove_outliers()
     
-    if len(utility.mergedPointsXY) > 0: 
+    if len(utility.clusteredPointsXY) > 0: 
         # Compute contour
         contour.contour()
 

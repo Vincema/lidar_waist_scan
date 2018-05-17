@@ -9,10 +9,10 @@ from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS_START = 20
+NB_OF_CTRL_POINTS_START = 15
 ORDER = 3
 NB_POINTS_BSPL = 100
-APPROXIMATION_ERROR_TRESHOLD = 0.2
+APPROXIMATION_ERROR_TRESHOLD = 2.0
 ITER_MAX = 1
 REGUL_WEIGHT = 0.001
 
@@ -94,6 +94,7 @@ class bspline:
         return np.array([self.derx2(tk),self.dery2(tk)])
 
     def plot_curve(self,plot_ctrl_pts=False):
+        plt.figure(utility.figMerge)
         u = np.linspace(self.t_min,self.t_max,self.sample_nb)
         pt = np.zeros((self.sample_nb,2))
         #pt2 = np.zeros((self.sample_nb,2))
@@ -110,7 +111,7 @@ def init_SDM(points):
     origin,radius = utility.fit_circle(points)
 
     n = NB_OF_CTRL_POINTS_START
-    n_sect = np.zeros(n)
+    n_sect = np.zeros(n,'int')
     mean_sect = np.zeros(n)
     amin = np.zeros(n)
     amid = np.zeros(n)
@@ -123,9 +124,25 @@ def init_SDM(points):
         angle = np.arctan2(points[i][1]-origin[1],points[i][0]-origin[0]) % (2*math.pi)
         for j in range(n):
             if amin[j] <= angle and angle < amax[j]:
-                n_sect[j] += 1.0
+                n_sect[j] += 1
                 mean_sect[j] += utility.euclidian_dist(points[i],origin)
-    mean_sect /= n_sect
+
+    for i in range(n):
+        if n_sect[i] > 0:
+            mean_sect[i] /= n_sect[i]
+
+    for i in range(n):
+        if n_sect[i] == 0:
+            j = (i-1)%n
+            while n_sect[j] == 0:
+                j = (j-1)%n
+            down = j
+            j = (i+1)%n
+            while n_sect[j] == 0:
+                j = (j+1)%n
+            up = j
+            mean_sect[i] = (mean_sect[down] + mean_sect[up]) / 2.0
+
     P = np.zeros((n,2))
     for i in range(n):
         P[i] = [origin[0]+(np.cos(amid[i])*mean_sect[i]),origin[1]+(np.sin(amid[i])*mean_sect[i])]
@@ -444,11 +461,12 @@ def compute_circumference(bspl):
     return circ
 
 def contour():
-    datas = utility.mergedPointsXY
+    datas = utility.clusteredPointsXY
     points = np.zeros((len(datas),2))
 
     for i in range(len(datas)):
         points[i] = [datas[i].x,datas[i].y]
+    global NB_OF_CTRL_POINTS_START
 
     bspl = SDM_algorithm(points)
     circum = compute_circumference(bspl)
