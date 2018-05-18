@@ -101,7 +101,7 @@ class bspline:
         for i in range(self.sample_nb):
             pt[i] = self.estimate(u[i])
             #pt2[i] = self.estimate_with_basis(u[i])
-        plt.plot(pt[:,0],pt[:,1],'k')
+        plt.plot(pt[:,0],pt[:,1],'b',ms=3.5)
         #plt.plot(pt2[:,0],pt2[:,1],'.r')
         if plot_ctrl_pts:
             plt.plot(self.c[0],self.c[1],'g')
@@ -148,7 +148,6 @@ def init_SDM(points):
         P[i] = [origin[0]+(np.cos(amid[i])*mean_sect[i]),origin[1]+(np.sin(amid[i])*mean_sect[i])]
     return P
 
-
 def find_tk_foot_point(bspl,point):
     closest_index = distance.cdist([point], bspl.sample_values).argmin()
     tk = bspl.sample_t[closest_index]
@@ -178,7 +177,6 @@ def find_tk_foot_point(bspl,point):
         else:
             a = m
     return bspl.modulo_tk(tk)
-
 
 def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
     esd = np.zeros((2*bspl.n_c,2*bspl.n_c))
@@ -313,7 +311,6 @@ def compute_approx_error(dist):
     n = len(dist)
     return np.sqrt((1/n)*np.sum(dist**2))
 
-
 def compute_points_attributes(points,bspl):
     tk = np.zeros(len(points))
     neigh = np.zeros((len(points),2))
@@ -408,10 +405,10 @@ def iter_SDM(points,bspl):
         # Stop condition
         if nb_iter >= iter_max:
             break
-        
+
         # Compute point attributes
         dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
-    
+
         # Approximation error
         approx_error = compute_approx_error(dist)
         if nb_iter > 0:
@@ -432,7 +429,7 @@ def iter_SDM(points,bspl):
         # Objective function minimization
         esd,esd_const = squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points)
         reg,reg_const = compute_regularization(bspl)
-
+    
         fsd = 0.5*esd + REGUL_WEIGHT*reg
         const = 0.5*esd_const + REGUL_WEIGHT*reg_const
 
@@ -461,10 +458,10 @@ def SDM_algorithm(points):
     #bspl.plot_curve(True)
     #plt.show()
     
-    #try:
-    bspl = iter_SDM(points,bspl)
-    #except:
-    #    print("An error occured")
+    try:
+        bspl = iter_SDM(points,bspl)
+    except:
+        print("An error occured")
     bspl.plot_curve(False)
     return bspl
 

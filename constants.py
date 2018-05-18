@@ -25,7 +25,7 @@ boundsDatasLidars = [-600,
                      600]
 
 # Nb of datas to retrieve for each lidar in total
-nbOfDatasToRetrieve = 300
+nbOfDatasToRetrieve = 200
 
 # Offset angle lidars
 offset_angle_lidar = 180
