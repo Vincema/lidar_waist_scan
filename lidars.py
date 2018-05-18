@@ -113,7 +113,7 @@ class setOfLidars:
 
         plt.figure(utility.figMerge)
         
-        plt.title('Merged datas')
+        plt.title('Body shape')
         plt.xlabel('x position (mm)')
         plt.ylabel('y position (mm)')
         
@@ -123,7 +123,7 @@ class setOfLidars:
         for i in range(len(utility.mergedPointsXY)):
             mergedPointsX.append(utility.mergedPointsXY[i].x)
             mergedPointsY.append(utility.mergedPointsXY[i].y)
-        plt.plot(mergedPointsX,mergedPointsY,'b.',label='Raw datas',ms=2)
+        plt.plot(mergedPointsX,mergedPointsY,'g.',label='Raw datas',ms=2)
         plt.gca().set_aspect('equal', adjustable='box')
         plt.axis(constants.boundsDatasLidars)
 
