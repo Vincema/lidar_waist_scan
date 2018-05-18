@@ -220,14 +220,13 @@ def remove_outliers():
             if dist_normal[i] < dist_to_med_tresh:
                 ind = np.append(ind,i)
         ind_edges = ind_edges[ind]
-        final_clust_pts = get_clusters(points,ind_edges[:,0],ind_edges[:,1])
-        
+        final_clust_pts = get_clusters(clust_pts[k],ind_edges[:,0],ind_edges[:,1])
+
+        plt.figure(figMerge)
         for i in range(len(final_clust_pts)):
             for j in range(len(final_clust_pts[i])):
                 clusteredPointsXY.append(point(final_clust_pts[i][j][0],final_clust_pts[i][j][1]))
-        
-        plt.figure(figMerge)
-        plt.plot(points[:,0],points[:,1],'.k',ms=2)
+                plt.plot(final_clust_pts[i][j][0],final_clust_pts[i][j][1],'.k',ms=2)
 
 
 
