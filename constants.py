@@ -13,10 +13,10 @@ lidarsAngle = [11*180/6,
 lidarsDist = 500
 
 # Height of lidars from the base
-lidarsHeight = 500
+lidarsHeight = 1000
 
 # Size of the zone from the lidar where measurement can't be performed (mm)
-deadZone = 100
+deadZone = 150
 
 # Bounds of plots
 boundsDatasLidars = [-600,
@@ -25,7 +25,7 @@ boundsDatasLidars = [-600,
                      600]
 
 # Nb of datas to retrieve for each lidar in total
-nbOfDatasToRetrieve = 200
+nbOfDatasToRetrieve = 500
 
 # Offset angle lidars
 offset_angle_lidar = 180
@@ -46,8 +46,8 @@ limit_ccw_angle = 0
 limit_cw_angle = 90
 
 # Heights margin for scanning (arround the patient's height)
-margin_top = 50
-margin_bot = 50
+margin_top = 10
+margin_bot = 10
 
 # Clustering constants
 deltaMinClust = 5   # Distance precision stop condition in mm
