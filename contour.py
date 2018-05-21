@@ -181,6 +181,7 @@ def find_tk_foot_point(bspl,point):
 def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
     esd = np.zeros((2*bspl.n_c,2*bspl.n_c))
     const = np.zeros(2*bspl.n_c)
+    n = bspl.n_c
     
     for k in range(len(points)):
         # Basis elements
@@ -195,15 +196,15 @@ def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
             Nox_Noy = No_tk[k,0]*No_tk[k,1]
             Noy_Noy = No_tk[k,1]**2
 
-            for i in range(bspl.n_c):
-                for j in range(bspl.n_c):
+            for i in range(n):
+                for j in range(n):
                     bi_bj = b_terms[i]*b_terms[j]
-                    esd[i][j]                   += bi_bj*Nox_Nox
-                    esd[i][j+bspl.n_c]          += bi_bj*Nox_Noy
-                    esd[i+bspl.n_c][j]          += bi_bj*Nox_Noy 
-                    esd[i+bspl.n_c][j+bspl.n_c] += bi_bj*Noy_Noy
-                const[i]          -= b_terms[i]*neigh_pt_norm_Nox
-                const[i+bspl.n_c] -= b_terms[i]*neigh_pt_norm_Noy
+                    esd[i,j]     += bi_bj*Nox_Nox
+                    esd[i,j+n]   += bi_bj*Nox_Noy
+                    esd[i+n,j]   += bi_bj*Nox_Noy 
+                    esd[i+n,j+n] += bi_bj*Noy_Noy
+                const[i]   -= b_terms[i]*neigh_pt_norm_Nox
+                const[i+n] -= b_terms[i]*neigh_pt_norm_Noy
                 
         elif dist[k] < 0:
             neigh_pt_norm = -dist[k]*No_tk[k,0]**2 + -dist[k]*No_tk[k,1]**2 #(neigh[0]-point[0])*No_tk[0] + (neigh[1]-point[1])*No_tk[1]
@@ -218,15 +219,15 @@ def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
             Nox_Noy = No_tk[k,0]*No_tk[k,1]
             Noy_Noy = No_tk[k,1]**2
             
-            for i in range(bspl.n_c):
-                for j in range(bspl.n_c):
+            for i in range(n):
+                for j in range(n):
                     bi_bj = b_terms[i]*b_terms[j] 
-                    esd[i][j]                   += bi_bj*dist_distRad_Tax_Tax + bi_bj*Nox_Nox
-                    esd[i][j+bspl.n_c]          += bi_bj*dist_distRad_Tax_Tay + bi_bj*Nox_Noy
-                    esd[i+bspl.n_c][j]          += bi_bj*dist_distRad_Tax_Tay + bi_bj*Nox_Noy
-                    esd[i+bspl.n_c][j+bspl.n_c] += bi_bj*dist_distRad_Tay_Tay + bi_bj*Noy_Noy 
-                const[i]          -= b_terms[i]*neigh_pt_norm_Nox  #dist_distRad*b_terms[i]*Ta_tk[0]*prodNeighPtTang 
-                const[i+bspl.n_c] -= b_terms[i]*neigh_pt_norm_Noy  #dist_distRad*b_terms[i]*Ta_tk[1]*prodNeighPtTang
+                    esd[i][j]    += bi_bj*dist_distRad_Tax_Tax + bi_bj*Nox_Nox
+                    esd[i,j+n]   += bi_bj*dist_distRad_Tax_Tay + bi_bj*Nox_Noy
+                    esd[i+n,j]   += bi_bj*dist_distRad_Tax_Tay + bi_bj*Nox_Noy
+                    esd[i+n,j+n] += bi_bj*dist_distRad_Tay_Tay + bi_bj*Noy_Noy 
+                const[i]   -= b_terms[i]*neigh_pt_norm_Nox  #dist_distRad*b_terms[i]*Ta_tk[0]*prodNeighPtTang 
+                const[i+n] -= b_terms[i]*neigh_pt_norm_Noy  #dist_distRad*b_terms[i]*Ta_tk[1]*prodNeighPtTang
         else:
             print("Error rad < dist: ",rad,'<',dist)
             raise
@@ -458,10 +459,10 @@ def SDM_algorithm(points):
     #bspl.plot_curve(True)
     #plt.show()
     
-    try:
-        bspl = iter_SDM(points,bspl)
-    except:
-        print("An error occured")
+    #try:
+    bspl = iter_SDM(points,bspl)
+    #except:
+    #    print("An error occured")
     bspl.plot_curve(False)
     return bspl
 

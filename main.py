@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import lidarsDrv as lid
 import pylab
 import warnings
+import time
 
 def disp_menu():
     print('')
@@ -77,12 +78,15 @@ def execute_actions():
         
         
 def compute_algo_circumference():
+    # Time measurement
+    start = time.clock() 
+
     # Read lidars datas
     lidarsSet.read_datas_files()
 
     # Plot raw datas
     lidarsSet.plot_raw_datas()
-
+    
     # Compute raw datas into merged datas
     lidarsSet.compute_raw_datas()
 
@@ -92,6 +96,8 @@ def compute_algo_circumference():
     if len(utility.clusteredPointsXY) > 0: 
         # Compute contour
         contour.contour()
+
+        print("Circumference computed in: ", time.clock() - start,' sec.')
 
         # Show the plots
         print('\nClose all figures to continue...\n')

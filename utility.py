@@ -9,6 +9,7 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.spatial import Delaunay
 from scipy.spatial import Voronoi,voronoi_plot_2d
 from sklearn.neighbors import kneighbors_graph
+import time
 
 # Misc data arrays
 mergedPointsXY = []
@@ -220,15 +221,19 @@ def remove_outliers():
             if dist_normal[i] < dist_to_med_tresh:
                 ind = np.append(ind,i)
         ind_edges = ind_edges[ind]
+        
         final_clust_pts = get_clusters(clust_pts[k],ind_edges[:,0],ind_edges[:,1])
-
-        plt.figure(figMerge)
         for i in range(len(final_clust_pts)):
             for j in range(len(final_clust_pts[i])):
                 clusteredPointsXY.append(point(final_clust_pts[i][j][0],final_clust_pts[i][j][1]))
-                plt.plot(final_clust_pts[i][j][0],final_clust_pts[i][j][1],'.k',ms=2)
 
+    x = []
+    y = []
+    for i in range(len(clusteredPointsXY)):
+        x.append(clusteredPointsXY[i].x)
+        y.append(clusteredPointsXY[i].y)
 
-
+    plt.figure(figMerge)
+    plt.plot(x,y,'.k',ms=2)
 
 
