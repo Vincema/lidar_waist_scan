@@ -67,6 +67,44 @@ def is_useful_data(pointXYZ):
             return True
     return False
 
+def get_biggest_cluster(points,v1,v2):
+    point_cluster = get_clusters(points,v1,v2)
+    n = len(points)
+
+    clusters,count = np.unique(point_cluster,return_counts=True)
+    clust_pts = []
+    
+    ind_biggest_cluster = np.argmax(count)
+    biggest_cluster = clusters[ind_biggest_cluster]
+    ind = np.array([],'int')
+    for i in range(n):
+        if point_cluster[i] == biggest_cluster:
+            ind = np.append(ind,i)
+    clust_pts = points[ind]
+
+    return clust_pts
+
+def get_final_clusters(points,v1,v2):
+    point_cluster = get_clusters(points,v1,v2)
+    n = len(points)
+    n_clustered_pts = 0
+
+    clusters,count = np.unique(point_cluster,return_counts=True)
+    clust_pts = []
+
+    # While not 90% of the points are clustered
+    while n_clustered_pts/n < 0.90:
+        ind_biggest_cluster = np.argmax(count)
+        biggest_cluster = clusters[ind_biggest_cluster]
+        ind = np.array([],'int')
+        for i in range(n):
+            if point_cluster[i] == biggest_cluster:
+                ind = np.append(ind,i)
+        clust_pts.append(points[ind])
+        n_clustered_pts += len(ind)
+        clusters = np.delete(clusters,ind_biggest_cluster)
+        count = np.delete(count,ind_biggest_cluster)
+    return clust_pts
 
 def get_clusters(points,v1,v2):
     n_edges = len(v1)
@@ -92,23 +130,7 @@ def get_clusters(points,v1,v2):
         elif point_cluster[ind2] > 0 and point_cluster[ind1] == 0:
             point_cluster[ind1] = point_cluster[ind2]
 
-    n_clustered_pts = 0
-    clusters,count = np.unique(point_cluster,return_counts=True)
-    clust_pts = []
-    # While not 75% of the points are clustered
-    while n_clustered_pts/n < 0.75:
-        ind_biggest_cluster = np.argmax(count)
-        biggest_cluster = clusters[ind_biggest_cluster]
-        ind = np.array([],'int')
-        for i in range(n):
-            if point_cluster[i] == biggest_cluster:
-                ind = np.append(ind,i)
-        clust_pts.append(points[ind])
-        n_clustered_pts += len(ind)
-        clusters = np.delete(clusters,ind_biggest_cluster)
-        count = np.delete(count,ind_biggest_cluster)
-    
-    return clust_pts
+    return point_cluster
 
 
 # Return true if line segments AB and CD intersect
@@ -137,14 +159,16 @@ def gabriel_graph(points):
     for i in range(len(vor.ridge_points)):
         ind1 = vor.ridge_points[i][0]
         ind2 = vor.ridge_points[i][1]
-        if vor.ridge_vertices[i][0] >= 0 and vor.ridge_vertices[i][1] >= 0:
-            ind_points_to_vertices_arr[ind1].dest_point.append(ind2)
-            ind_points_to_vertices_arr[ind1].vertice_index.append(i)
-            ind_points_to_vertices_arr[ind2].dest_point.append(ind1)
-            ind_points_to_vertices_arr[ind2].vertice_index.append(i)
+        ind_points_to_vertices_arr[ind1].dest_point.append(ind2)
+        ind_points_to_vertices_arr[ind1].vertice_index.append(i)
+        ind_points_to_vertices_arr[ind2].dest_point.append(ind1)
+        ind_points_to_vertices_arr[ind2].vertice_index.append(i)
+            
 
     ind_edges = []
+    #ind_edges2 = []
     dist = np.array([])
+    center = vor.points.mean(axis=0)
     for i in range(len(tri.simplices)):
         for j in range(3):
             ind1 = tri.simplices[i][j]
@@ -152,24 +176,43 @@ def gabriel_graph(points):
             for k in range(len(ind_points_to_vertices_arr[ind1].dest_point)):
                 if ind2 == ind_points_to_vertices_arr[ind1].dest_point[k]:
                     ind_vert = ind_points_to_vertices_arr[ind1].vertice_index[k]
-                    a,b = vor.vertices[vor.ridge_vertices[ind_vert]]
+                    if vor.ridge_vertices[ind_vert][0] < 0 or vor.ridge_vertices[ind_vert][1] < 0:
+                        if vor.ridge_vertices[ind_vert][0] < 0:
+                            a = vor.vertices[vor.ridge_vertices[ind_vert]][1]
+                        else:
+                            a = vor.vertices[vor.ridge_vertices[ind_vert]][1]
+                        tang = points[ind2] - points[ind1]  # tangent
+                        tang /= np.linalg.norm(tang)
+                        norm = np.array([-tang[1], tang[0]])  # normal
+                        midpoint = np.mean([points[ind1],points[ind2]])
+                        direction = np.sign(np.dot(midpoint - center, norm)) * norm
+                        b = a + direction * 1000
+                    else:
+                       a,b = vor.vertices[vor.ridge_vertices[ind_vert]]
                     if intersect(a,b,points[ind1],points[ind2]) == True:
                         ind_edges.append([ind1,ind2])
                         distance = euclidian_dist(points[ind1],points[ind2])
                         dist = np.append(dist,distance)
+                    #else:
+                    #    ind_edges2.append([ind1,ind2])
                     break
         
 
+    
     ind_edges = np.asarray(ind_edges)
+    #ind_edges2 = np.asarray(ind_edges2)
+    #plt.triplot(points[:,0], points[:,1], tri.simplices.copy())
     #plt.plot([points[ind_edges[:,0],0],points[ind_edges[:,1],0]],[points[ind_edges[:,0],1],points[ind_edges[:,1],1]],'k')
+    #plt.plot([points[ind_edges2[:,0],0],points[ind_edges2[:,1],0]],[points[ind_edges2[:,0],1],points[ind_edges2[:,1],1]],'r')
     #voronoi_plot_2d(vor)
     #plt.show()
     return ind_edges,dist                
 
 
 def remove_outliers():
-    # Confidence interval of 99%
-    dist_to_med_tresh = 3.09
+    # Confidence interval of 95%
+    confidence_tresh = 3.09
+    max_dist = 75    
     
     n = len(mergedPointsXY)
     points = np.zeros((n,2))
@@ -192,40 +235,38 @@ def remove_outliers():
 
     # Rough filtering (if the edge is too long, delete it)
     n_edges = len(dist)
-    median_dist = np.median(dist)
-    std_dist = np.std(dist)
-    dist_normal = (dist - median_dist) / std_dist
     
     ind = np.array([],'int')
     for i in range(n_edges):
-        if dist_normal[i] < dist_to_med_tresh:
+        if dist[i] < max_dist:
             ind = np.append(ind,i)
 
     p1 = p1[ind]
     p2 = p2[ind]
-    clust_pts = get_clusters(points,p1,p2)
+    biggest_clust = get_biggest_cluster(points,p1,p2)
+    plt.plot(biggest_clust[:,0],biggest_clust[:,1],'.r')
 
     # Fine filtering (if the edge is too long, delete it)
+    ind_edges,dist = gabriel_graph(biggest_clust)
+        
+    n_edges = len(dist)
+    median_dist = np.median(dist)
+    std_dist = np.std(dist)
+    dist_normal = (dist - median_dist) / std_dist
+        
+    ind = np.array([],'int')
+    for i in range(n_edges):
+        if dist_normal[i] < confidence_tresh:
+            ind = np.append(ind,i)
+    ind_edges = ind_edges[ind]
+
+    final_clust_pts = get_final_clusters(biggest_clust,ind_edges[:,0],ind_edges[:,1])
+
     global clusteredPointsXY
     clusteredPointsXY = []
-    for k in range(len(clust_pts)):
-        ind_edges,dist = gabriel_graph(clust_pts[k])
-        
-        n_edges = len(dist)
-        median_dist = np.median(dist)
-        std_dist = np.std(dist)
-        dist_normal = (dist - median_dist) / std_dist
-        
-        ind = np.array([],'int')
-        for i in range(n_edges):
-            if dist_normal[i] < dist_to_med_tresh:
-                ind = np.append(ind,i)
-        ind_edges = ind_edges[ind]
-        
-        final_clust_pts = get_clusters(clust_pts[k],ind_edges[:,0],ind_edges[:,1])
-        for i in range(len(final_clust_pts)):
-            for j in range(len(final_clust_pts[i])):
-                clusteredPointsXY.append(point(final_clust_pts[i][j][0],final_clust_pts[i][j][1]))
+    for i in range(len(final_clust_pts)):
+        for j in range(len(final_clust_pts[i])):
+            clusteredPointsXY.append(point(final_clust_pts[i][j][0],final_clust_pts[i][j][1]))
 
     x = []
     y = []
