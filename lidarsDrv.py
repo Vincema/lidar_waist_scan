@@ -41,9 +41,13 @@ def compute_angle_array_for_scan(height):
         currentDist += (dist2-dist1)
         angle_array.append(-angle*180/math.pi)
         if dist2 > max_meas_dist:
-            meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist)))
+            nb = math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-min_meas_dist) / (max_meas_dist-dist1))
         else:
-            meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (dist2-dist1) / (max_meas_dist-min_meas_dist)))
+            nb = math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-min_meas_dist) / (dist2-dist1))
+        # Saturator to avoid a large amount of points
+        if nb > 2*constants.nbOfDatasToRetrieve:
+            nb = 2*constants.nbOfDatasToRetriev
+        meas_nb.append(nb)
     return [angle_array,meas_nb]
     
 
@@ -189,11 +193,11 @@ class driverLidars:
                         datas = next(iterMeas[lidarNb])
                         angle = -1*((datas[2]+constants.offset_angle_lidar)%360 - 180.0)
                         dist = datas[3]
-                        # First selection of points 
-                        if angle >= -30 and angle <= +30 and dist > 0:
-                            file[lidarNb].write(str(angle) + ' ' + str(current_angle_z) + ' ' + str(dist) + '\n')
-                            datasLeft[lidarNb] -= 1
-                            if datasLeft[lidarNb] < 1:
+                        if dist > 0:
+                            if angle >= -30 and angle <= +30:
+                                file[lidarNb].write(str(angle) + ' ' + str(current_angle_z) + ' ' + str(dist) + '\n')
+                                datasLeft[lidarNb] -= 1
+                            elif datasLeft[lidarNb] < 0:
                                 done[lidarNb] = True
         except:
             print('    Cannot retrieve datas on lidar ',lidarNb+1,'!')
