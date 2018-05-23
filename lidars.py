@@ -106,7 +106,7 @@ class setOfLidars:
         
         ax.set_xbound(constants.boundsDatasLidars[0],constants.boundsDatasLidars[1])
         ax.set_ybound(constants.boundsDatasLidars[2],constants.boundsDatasLidars[3])
-        ax.set_zbound(0,constants.lidarsHeight*2)
+        #ax.set_zbound(0,constants.lidarsHeight*2)
 
     def plot_merged_datas(self):
         global mergedPointsXY
