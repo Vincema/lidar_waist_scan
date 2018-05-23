@@ -8,6 +8,7 @@ import lidarsDrv as lid
 import pylab
 import warnings
 import time
+import cProfile
 
 def disp_menu():
     print('')
@@ -92,7 +93,8 @@ def compute_algo_circumference():
 
     # Remove outliers
     utility.remove_outliers()
-    
+
+    print('    ',len(utility.clusteredPointsXY),' points')
     if len(utility.clusteredPointsXY) > 0: 
         # Compute contour
         contour.contour()

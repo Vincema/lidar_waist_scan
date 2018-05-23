@@ -9,7 +9,7 @@ from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS_START = 10
+NB_OF_CTRL_POINTS_START = 15
 ORDER = 3
 NB_POINTS_BSPL = 10*NB_OF_CTRL_POINTS_START
 APPROXIMATION_ERROR_TRESHOLD = 2.0
@@ -182,7 +182,8 @@ def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
     esd = np.zeros((2*bspl.n_c,2*bspl.n_c))
     const = np.zeros(2*bspl.n_c)
     n = bspl.n_c
-    
+
+    bi_bj = np.zeros((n,n))
     for k in range(len(points)):
         # Basis elements
         b_terms = bspl.get_basis(tk[k])

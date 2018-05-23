@@ -87,13 +87,12 @@ def get_biggest_cluster(points,v1,v2):
 def get_final_clusters(points,v1,v2):
     point_cluster = get_clusters(points,v1,v2)
     n = len(points)
-    n_clustered_pts = 0
 
     clusters,count = np.unique(point_cluster,return_counts=True)
     clust_pts = []
-
-    # While not 90% of the points are clustered
-    while n_clustered_pts/n < 0.90:
+    while clusters.size:
+        if np.max(count) < 10:
+            break
         ind_biggest_cluster = np.argmax(count)
         biggest_cluster = clusters[ind_biggest_cluster]
         ind = np.array([],'int')
@@ -101,7 +100,6 @@ def get_final_clusters(points,v1,v2):
             if point_cluster[i] == biggest_cluster:
                 ind = np.append(ind,i)
         clust_pts.append(points[ind])
-        n_clustered_pts += len(ind)
         clusters = np.delete(clusters,ind_biggest_cluster)
         count = np.delete(count,ind_biggest_cluster)
     return clust_pts
@@ -173,8 +171,8 @@ def gabriel_graph(points):
         for j in range(3):
             ind1 = tri.simplices[i][j]
             ind2 = tri.simplices[i][(j+1)%3]
-            for k in range(len(ind_points_to_vertices_arr[ind1].dest_point)):
-                if ind2 == ind_points_to_vertices_arr[ind1].dest_point[k]:
+            for k,dest_point in enumerate(ind_points_to_vertices_arr[ind1].dest_point):
+                if ind2 == dest_point:
                     ind_vert = ind_points_to_vertices_arr[ind1].vertice_index[k]
                     if vor.ridge_vertices[ind_vert][0] < 0 or vor.ridge_vertices[ind_vert][1] < 0:
                         if vor.ridge_vertices[ind_vert][0] < 0:
@@ -244,7 +242,6 @@ def remove_outliers():
     p1 = p1[ind]
     p2 = p2[ind]
     biggest_clust = get_biggest_cluster(points,p1,p2)
-    plt.plot(biggest_clust[:,0],biggest_clust[:,1],'.r')
 
     # Fine filtering (if the edge is too long, delete it)
     ind_edges,dist = gabriel_graph(biggest_clust)
