@@ -36,8 +36,8 @@ nbOfDatasToRetrieve = 500
 offset_angle_lidar = 180
 
 # Serial port for Lidars
-serialPort = ['/dev/ttyUSB1',
-              '/dev/ttyUSB0',
+serialPort = ['/dev/ttyUSB0',
+              '/dev/ttyUSB1',
               '/dev/ttyUSB2']
 
 # Speed of servos (0-254)
@@ -56,8 +56,6 @@ margin_bot_meas = 5
 margin_top = 20
 margin_bot = 20
 
-# Clustering constants
-deltaMinClust = 5   # Distance precision stop condition in mm
-aStartClust = 0     # Min start value for dichotomy in mm
-bStartClust = 1000  # Max start value for dichotomy in mm
-nonNoiseMeas = 0.95 # Minimum fraction of the measurments count considered as ok
+# Clusterung
+min_size_cluster = 10
+max_dist_bet_clusters = 1000
