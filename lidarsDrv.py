@@ -15,13 +15,13 @@ def compute_angle_array_for_scan(height):
     meas_nb = []
     
     # If the patient's height is at the lidar level, no need to change the angle 
-    if abs(constants.lidarsHeight - height) <= constants.margin_top_meas or abs(constants.lidarsHeight - height) <= constants.margin_bot_meas:
+    if abs(constants.lidarsHeight - height) <= constants.margin_top or abs(constants.lidarsHeight - height) <= constants.margin_bot:
         angle_array.append(0)
         meas_nb.append(constants.nbOfDatasToRetrieve)
         return [angle_array,meas_nb]
     
-    hgt_diff_mtop = constants.lidarsHeight - (height + constants.margin_top_meas)
-    hgt_diff_mbot = constants.lidarsHeight - (height - constants.margin_bot_meas)
+    hgt_diff_mtop = constants.lidarsHeight - (height + constants.margin_top)
+    hgt_diff_mbot = constants.lidarsHeight - (height - constants.margin_bot)
     
     min_meas_dist = constants.deadZone
     max_meas_dist = 2*(constants.lidarsDist-constants.deadZone)
@@ -41,13 +41,9 @@ def compute_angle_array_for_scan(height):
         currentDist += (dist2-dist1)
         angle_array.append(-angle*180/math.pi)
         if dist2 > max_meas_dist:
-            nb = math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist))
+            meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist)))
         else:
-            nb = math.ceil(constants.nbOfDatasToRetrieve * (dist2-dist1) / (max_meas_dist-min_meas_dist))
-        meas_nb.append(nb)
-
-    angle_array.reverse()
-    meas_nb.reverse()
+            meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (dist2-dist1) / (max_meas_dist-min_meas_dist)))
     return [angle_array,meas_nb]
     
 
@@ -96,7 +92,6 @@ class driverLidars:
         self.serial_connection.close()
         print('    Disconnected to servos serial')
         for lidarNb in range(constants.nb_of_lidars):
-            self.lidars[lidarNb].stop()
             self.lidars[lidarNb].disconnect()
             time.sleep(0.25) # To avoid to drain too much current
             print('    Disconnected to lidar',lidarNb+1)
@@ -163,12 +158,11 @@ class driverLidars:
                     pass
         return 0
     
-    def single_scan(self,current_angle_z,meas_nb,erase_file,height): 
+    def single_scan(self,current_angle_z,meas_nb,erase_file): 
         file = []
         iterMeas = []
         datasLeft = []
         done = []
-        #print(meas_nb)
         for lidarNb in range(constants.nb_of_lidars):
             try:
                 path = constants.dirPath + r'/DatasL' + str(lidarNb+1) + '.txt'
@@ -185,53 +179,22 @@ class driverLidars:
             except:
                 print('    Cannot communicate with lidar',lidarNb+1,'!')
                 return -1 
-            datasLeft.append(meas_nb)
+            datasLeft.append(constants.nbOfDatasToRetrieve)
             done.append(False)
             
-        try:
-            nb_datas_rot = -2 * np.ones(constants.nb_of_lidars)
-            datas = next(iterMeas[lidarNb]) # Flush the first data
+        try:  
             while False in done:
                 for lidarNb in range(constants.nb_of_lidars):
                     if done[lidarNb] == False:
                         datas = next(iterMeas[lidarNb])
-                        angle = -1*(((datas[2]+constants.offset_angle_lidar)%360.0)-180.0)
+                        angle = -1*((datas[2]+constants.offset_angle_lidar)%360 - 180.0)
                         dist = datas[3]
-                        
-                        if dist > 0:
-                            
-                        
-                        if angle >= -90 and angle <= +90:
-                            if nb_datas_rot[lidarNb] == -1:
-                                nb_datas_rot[lidarNb] = 0
-                                
-                            if dist > 0:
-                                # Get Pos
-                                visionAngle = (constants.lidarsAngle[lidarNb] + 180)%360 # Get the opposite of the lidar's angle
-                                c1 = math.cos(visionAngle*math.pi/180)
-                                c2 = math.cos(current_angle_z*math.pi/180)
-                                c3 = math.cos(angle*math.pi/180)
-                                s1 = math.sin(visionAngle*math.pi/180)
-                                s2 = math.sin(current_angle_z*math.pi/180)
-                                s3 = math.sin(angle*math.pi/180)
-                                x = dist*((c1*c2*c3)-(s1*s3)) + constants.lidarsDist*math.cos(constants.lidarsAngle[lidarNb]*math.pi/180)
-                                y = dist*((c1*s3)+(c2*c3*s1)) + constants.lidarsDist*math.sin(constants.lidarsAngle[lidarNb]*math.pi/180)
-                                z = dist*(-1)*(c3*s2) + constants.lidarsHeight
-                                # If the data is in the detection circle
-                                #if math.sqrt((x**2)+(y**2)) < (constants.lidarsDist-constants.deadZone):
-                                #    if z >= height-constants.margin_bot and z <= height+constants.margin_top:
-                                file[lidarNb].write(str(angle) + ' ' + str(current_angle_z) + ' ' + str(dist) + '\n')
-                                if datasLeft[lidarNb] > 0:
-                                    datasLeft[lidarNb] -= 1
-                                if nb_datas_rot[lidarNb] >= 0:
-                                    nb_datas_rot[lidarNb] += 1
-                        else:
-                            if nb_datas_rot[lidarNb] >= 0:
-                                print("HELLO")
-                                print(nb_datas_rot[lidarNb])
-                            if datasLeft[lidarNb] == 0 or nb_datas_rot[lidarNb] == 0:
+                        # First selection of points 
+                        if angle >= -90 and angle <= +90 and dist > 0:
+                            file[lidarNb].write(str(angle) + ' ' + str(current_angle_z) + ' ' + str(dist) + '\n')
+                            datasLeft[lidarNb] -= 1
+                            if datasLeft[lidarNb] < 1:
                                 done[lidarNb] = True
-                            nb_datas_rot[lidarNb] = -1
         except:
             print('    Cannot retrieve datas on lidar ',lidarNb+1,'!')
             self.disconnect()
@@ -245,8 +208,7 @@ class driverLidars:
                 return -1
 
             file[lidarNb].close()
-        print(a)
-        return math.ceil(np.mean(datasLeft))
+        return 0
     
     
     def scan_datas(self,height):
@@ -261,28 +223,25 @@ class driverLidars:
             return -1
         
         [inclination_array,nbMes_array] = compute_angle_array_for_scan(height)
-        tmp_datas_left = 0
+        
         for i in range(len(inclination_array)):
             try:
                 # Broadcast moving action to all servos
                 inclination_array[i] = self.servos_goto(BROADCAST_ID,inclination_array[i])
-                if self.wait_servos_moving() != 0:
-                    return -1
             except:
                 print("    Problem with the serial connection!")
                 self.disconnect()
                 return -1
-
-            nbMes_array[i] = math.ceil(nbMes_array[i]+tmp_datas_left)
-
-            if i == 0:
-                tmp_datas_left = self.single_scan(inclination_array[i],constants.nbOfDatasToRetrieve,True,height)
-            else:
-                tmp_datas_left = self.single_scan(inclination_array[i],constants.nbOfDatasToRetrieve,False,height)
-
-            if tmp_datas_left == -1:
+            
+            if self.wait_servos_moving() != 0:
                 return -1
 
+            if i == 0:
+                if self.single_scan(inclination_array[i],nbMes_array[i],True) != 0:
+                    return -1
+            else:
+                if self.single_scan(inclination_array[i],nbMes_array[i],False) != 0:
+                    return -1                    
             
         # Write the height of scan in the info file
         try:
