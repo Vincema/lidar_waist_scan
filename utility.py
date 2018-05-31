@@ -91,7 +91,7 @@ def get_final_clusters(points,v1,v2):
     clusters,count = np.unique(point_cluster,return_counts=True)
     clust_pts = []
     while clusters.size:
-        if np.max(count) < 10:
+        if np.max(count) < constants.min_size_cluster:
             break
         ind_biggest_cluster = np.argmax(count)
         biggest_cluster = clusters[ind_biggest_cluster]
@@ -210,7 +210,7 @@ def gabriel_graph(points):
 def remove_outliers():
     # Confidence interval of 95%
     confidence_tresh = 3.09
-    max_dist = 75    
+    max_dist = constants.max_dist_bet_clusters    
     
     n = len(mergedPointsXY)
     points = np.zeros((n,2))
@@ -218,7 +218,7 @@ def remove_outliers():
         points[i,0] = mergedPointsXY[i].x
         points[i,1] = mergedPointsXY[i].y
     
-    G = kneighbors_graph(points,n_neighbors=50,mode='distance')
+    G = kneighbors_graph(points,n_neighbors=n-1,mode='distance')
     T = minimum_spanning_tree(G,overwrite=True)
 
     # Get coord of each line segment
