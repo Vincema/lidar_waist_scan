@@ -59,13 +59,18 @@ def execute_actions():
             if drv.check_link_state() == 0:
                 drv.stop_motors()       
         elif choice == '4':
-            height = int(input('    Please enter patient\'s height in cm: '))
-            if height > 0:
-                # Data scanning
+            run_scan = False
+            try:
+                height = int(input('    Please enter patient\'s height in cm: '))
+                if height > 0:
+                    run_scan = True
+            except:
+                print('    Incorrect height!')
+
+            # Data scanning
+            if run_scan:
                 if drv.check_link_state() == 0:
                     drv.scan_datas(height*10)
-            else:
-                print('    Incorrect height!')
         elif choice == '5':
             lidarsSet.read_datas_files()
             lidarsSet.plot_raw_datas()
