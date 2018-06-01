@@ -15,13 +15,13 @@ def compute_angle_array_for_scan(height):
     meas_nb = []
     
     # If the patient's height is at the lidar level, no need to change the angle 
-    if abs(constants.lidarsHeight - height) <= constants.margin_top or abs(constants.lidarsHeight - height) <= constants.margin_bot:
+    if abs(constants.lidarsHeight - height) <= constants.margin_top_meas or abs(constants.lidarsHeight - height) <= constants.margin_bot_meas:
         angle_array.append(0)
         meas_nb.append(constants.nbOfDatasToRetrieve)
         return [angle_array,meas_nb]
     
-    hgt_diff_mtop = constants.lidarsHeight - (height + constants.margin_top)
-    hgt_diff_mbot = constants.lidarsHeight - (height - constants.margin_bot)
+    hgt_diff_mtop = constants.lidarsHeight - (height + constants.margin_top_meas)
+    hgt_diff_mbot = constants.lidarsHeight - (height - constants.margin_bot_meas)
     
     min_meas_dist = constants.deadZone
     max_meas_dist = 2*(constants.lidarsDist-constants.deadZone)

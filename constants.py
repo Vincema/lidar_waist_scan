@@ -51,10 +51,10 @@ limit_ccw_angle = 0
 limit_cw_angle = 90
 
 # Heights margin for scanning (arround the patient's height)
-margin_top_meas = 5
-margin_bot_meas = 5
-margin_top = 20
-margin_bot = 20
+margin_top_meas = 10
+margin_bot_meas = 10
+margin_top = 10
+margin_bot = 10
 
 # Clusterung
 min_size_cluster = 10
