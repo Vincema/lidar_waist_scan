@@ -92,6 +92,7 @@ class driverLidars:
         self.serial_connection.close()
         print('    Disconnected to servos serial')
         for lidarNb in range(constants.nb_of_lidars):
+            self.lidars[lidarNb].stop()
             self.lidars[lidarNb].disconnect()
             time.sleep(0.25) # To avoid to drain too much current
             print('    Disconnected to lidar',lidarNb+1)

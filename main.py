@@ -8,7 +8,6 @@ import lidarsDrv as lid
 import pylab
 import warnings
 import time
-import cProfile
 
 def disp_menu():
     print('')
