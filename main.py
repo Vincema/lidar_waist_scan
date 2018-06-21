@@ -69,7 +69,9 @@ def execute_actions():
             # Data scanning
             if run_scan:
                 if drv.check_link_state() == 0:
-                    drv.scan_datas(height*10)
+                    lin_coeffs_navel_height = [0.66410011, -105.89395578]
+                    estim_navel_height = (height*10)*lin_coeffs_navel_height[0] + lin_coeffs_navel_height[1]
+                    drv.scan_datas(estim_navel_height)
         elif choice == '5':
             lidarsSet.read_datas_files()
             lidarsSet.plot_raw_datas()
@@ -96,10 +98,9 @@ def compute_algo_circumference():
     lidarsSet.compute_raw_datas()
 
     # Remove outliers
-    utility.remove_outliers()
-
-    print('    ',len(utility.clusteredPointsXY),' points')
-    if len(utility.clusteredPointsXY) > 0: 
+    if len(utility.mergedPointsXY) > 0:
+        utility.remove_outliers()
+        
         # Compute contour
         contour.contour()
 
