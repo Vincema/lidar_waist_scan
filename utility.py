@@ -1,3 +1,4 @@
+from bb_serial import cust_print, cust_read
 import math
 import constants
 import matplotlib
@@ -62,6 +63,10 @@ def fit_circle(points):
 def is_useful_data(pointXYZ):
     # Is in the circle of 75% of the radius of the outter circle formed by the lidars
     if math.sqrt(pointXYZ.x**2 + pointXYZ.y**2) <= (constants.lidarsDist-constants.deadZone):
+        # cust_print (pointXYZ.z)
+        # cust_print (patientHeight-constants.margin_bot)
+        # cust_print (patientHeight+constants.margin_top)
+        # cust_print (" ")
         # Is at the good height
         if pointXYZ.z >= patientHeight-constants.margin_bot and pointXYZ.z <= patientHeight+constants.margin_top:
             return True

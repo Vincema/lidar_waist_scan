@@ -1,3 +1,4 @@
+from bb_serial import cust_print, cust_read
 import utility
 import constants
 import math
@@ -230,7 +231,7 @@ def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
                 const[i]   -= b_terms[i]*neigh_pt_norm_Nox  #dist_distRad*b_terms[i]*Ta_tk[0]*prodNeighPtTang 
                 const[i+n] -= b_terms[i]*neigh_pt_norm_Noy  #dist_distRad*b_terms[i]*Ta_tk[1]*prodNeighPtTang
         else:
-            print("Error rad < dist: ",rad,'<',dist)
+            cust_print("Error rad < dist: ",rad,'<',dist)
             raise
 
     return esd,const
@@ -249,7 +250,7 @@ def mark_zeros_line(bspl,esd,tresh):
         if i == False:
             cpt+=1
     if cpt < 2:
-        print("Cannot minimize SD error!")
+        cust_print("Cannot minimize SD error!")
         raise
     return zeros
 
@@ -414,7 +415,7 @@ def iter_SDM(points,bspl):
         # Approximation error
         approx_error = compute_approx_error(dist)
         if nb_iter > 0:
-            print("    Fit average error: ", approx_error)
+            cust_print("    Fit average error: ", approx_error)
 
         # Stop conditions
         epsi_approx_error = APPROXIMATION_ERROR_TRESHOLD
@@ -463,7 +464,7 @@ def SDM_algorithm(points):
     #try:
     bspl = iter_SDM(points,bspl)
     #except:
-    #    print("An error occured")
+    #    cust_print("An error occured")
     bspl.plot_curve(False)
     return bspl
 
@@ -477,15 +478,20 @@ def compute_circumference(bspl):
 
 def contour():
     datas = utility.clusteredPointsXY
+    
+    #path = constants.dirPath + r'/2dPointsTest.txt'
+    #datas = np.loadtxt(path, dtype='d', delimiter=' ')
+    
     points = np.zeros((len(datas),2))
 
     for i in range(len(datas)):
         points[i] = [datas[i].x,datas[i].y]
+        #points[i] = [datas[i,0],datas[i,1]]
     global NB_OF_CTRL_POINTS_START
 
     bspl = SDM_algorithm(points)
     circum = compute_circumference(bspl)
 
-    print('\nCircumference: ',format(circum, '.2f'),'mm')
+    cust_print('\nCircumference: ' + str(format(circum, '.2f')) + 'mm')
 
     

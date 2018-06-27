@@ -1,3 +1,4 @@
+from bb_serial import cust_print, cust_read
 import constants
 import numpy as np
 
@@ -8,6 +9,6 @@ def read_data_single_lidar(lidarNb):
         path = constants.dirPath + r'/scan_infos.txt'
         height = np.loadtxt(path)
     except:
-        print('    Cannot read data files!')
+        cust_print('    Cannot read data files!')
     return (datas,height)
 

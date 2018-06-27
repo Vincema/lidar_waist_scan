@@ -22,7 +22,8 @@ class lidarInfos:
     def save_datas(self,datas,patientHeight):
         self.pointDatas = []
         visionAngle = (self.angle + 180)%360 # Get the opposite of this angle
-        
+
+        # datas = [horizontal_angle, vertical_angle, distance]
         for i in range(len(datas)):
             dist = datas[i][2]
             c1 = math.cos(visionAngle*math.pi/180)
@@ -31,9 +32,12 @@ class lidarInfos:
             s1 = math.sin(visionAngle*math.pi/180)
             s2 = math.sin(datas[i][1]*math.pi/180)
             s3 = math.sin(datas[i][0]*math.pi/180)
-            x = dist*((c1*c2*c3)-(s1*s3)) + self.position.x 
-            y = dist*((c1*s3)+(c2*c3*s1)) + self.position.y
-            z = dist*(-1)*(c3*s2) + self.position.z
+            x = dist*((c1*c2*c3)-(s1*s3))
+            x += (self.distCenter - constants.lidarsDistFromRotAxis * (1 - math.cos(datas[i][1]*math.pi/180))) * math.cos(self.angle*math.pi/180)
+            y = dist*((c1*s3)+(c2*c3*s1))
+            y += (self.distCenter - constants.lidarsDistFromRotAxis * (1 - math.cos(datas[i][1]*math.pi/180))) * math.sin(self.angle*math.pi/180)
+            z = dist*(-1)*(c3*s2)
+            z += self.position.z + (constants.lidarsDistFromRotAxis * math.sin(datas[i][1]*math.pi/180))
             self.pointDatas.append(utility.point(x,y,z))
            
         # Save patient's height

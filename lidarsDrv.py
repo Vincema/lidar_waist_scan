@@ -1,3 +1,4 @@
+from bb_serial import cust_print, cust_read
 from drivers.rplidar import RPLidar
 from pyax12.connection import Connection
 import numpy as np
@@ -6,9 +7,6 @@ import time
 import math
 
 BROADCAST_ID = 254
-
-# For debug
-p = np.array([0.17897664, 1.4094397, 5.8093253])
 
 def compute_angle_array_for_scan(height):
     angle_array = []
@@ -40,10 +38,11 @@ def compute_angle_array_for_scan(height):
         dist2 = hgt2/math.tan(angle)
         currentDist += (dist2-dist1)
         angle_array.append(-angle*180/math.pi)
-        if dist2 > max_meas_dist:
-            meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist)))
-        else:
-            meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (dist2-dist1) / (max_meas_dist-min_meas_dist)))
+        meas_nb.append(constants.nbOfDatasToRetrieve)
+        #if dist2 > max_meas_dist:
+        #    meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist)))
+        #else:
+        #    meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (dist2-dist1) / (max_meas_dist-min_meas_dist)))
     return [angle_array,meas_nb]
     
 
@@ -55,23 +54,23 @@ class driverLidars:
         self.areConnected = 0
 
     def connect(self):
-        print('Connecting to lidars and servos...')
+        cust_print('Connecting to lidars and servos...')
         self.lidars = []
         self.serial_connection = []
         try:
             # Connect to the serial port
             self.serial_connection = Connection(port="/dev/ttyAMA0", baudrate=57600, rpi_gpio=True)
         except:
-            print('    Cannot open serial connection for servos!')
-            return -1
+            cust_print('    Cannot open serial connection for servos!')
+            #return -1
         for lidarNb in range(constants.nb_of_lidars):
             try:
                 self.lidars.append(RPLidar(constants.serialPort[lidarNb],baudrate=115200))
                 self.lidars[lidarNb].connect()
             except:
-                print('    Cannot connect to the lidar',lidarNb+1,'!')
+                cust_print('    Cannot connect to the lidar' + str(lidarNb+1) + '!')
                 return -1
-            print('    Connected to lidar',lidarNb+1)
+            cust_print('    Connected to lidar' + str(lidarNb+1))
             
             try:
                 # Try to ping the motor
@@ -80,55 +79,41 @@ class driverLidars:
                 self.serial_connection.set_speed(BROADCAST_ID,constants.servosSpeed)
                 self.servos_goto(constants.servosIDs[lidarNb],0)
             except:
-                print('    Cannot connect to the servo',lidarNb+1,'!')
+                cust_print('    Cannot connect to the servo' + str(lidarNb+1) + '!')
                 return -1
-            print('    Connected to servo',lidarNb+1)
+            cust_print('    Connected to servo' + str(lidarNb+1))
             time.sleep(0.25) # To avoid a too high current drain
         self.areConnected = 1
         return 0
         
     def disconnect(self):
-        print('Disconnecting to lidars and servos...')
+        cust_print('Disconnecting to lidars and servos...')
         self.serial_connection.close()
-        print('    Disconnected to servos serial')
+        cust_print('    Disconnected to servos serial')
         for lidarNb in range(constants.nb_of_lidars):
             self.lidars[lidarNb].stop()
             self.lidars[lidarNb].disconnect()
             time.sleep(0.25) # To avoid to drain too much current
-            print('    Disconnected to lidar',lidarNb+1)
+            cust_print('    Disconnected to lidar' + str(lidarNb+1))
         self.lidars[:] = []
         self.areConnected = 0
 
-    def servos_goto(self,servosID,position):
-        cmd = np.polyval(p,position)
-        if cmd <= constants.limit_cw_angle and cmd >= constants.limit_ccw_angle:
-            sat_cmd = cmd
-            true_angle = position
-        else:
-            if cmd > constants.limit_cw_angle:
-                sat_cmd = constants.limit_cw_angle
-            else:
-                sat_cmd = constants.limit_ccw_angle
-            
-            true_angle = np.roots(np.append(p[0:-1],p[-1]-sat_cmd))[1]
-        self.serial_connection.goto(servosID,sat_cmd,degrees=True)
-        #print('Desired',position)
-        #print('Real',true_angle)
-        return -true_angle
+    def servos_goto(self,servosID,position):   
+        self.serial_connection.goto(servosID,position,degrees=True)
 
     def check_link_state(self):
         for lidarNb in range(constants.nb_of_lidars):
             try:
                 self.lidars[lidarNb].get_health()  
             except:
-                print('Link error with lidar',lidarNb+1)
+                cust_print('Link error with lidar' + str(lidarNb+1))
                 self.disconnect()
                 return -1
             try:
                 if self.serial_connection.ping(constants.servosIDs[lidarNb]) == False:
                     raise
             except:
-                print('Link error with servo',lidarNb+1)
+                cust_print('Link error with servo' + str(lidarNb+1))
                 self.disconnect()
                 return -1
         return 0
@@ -150,7 +135,7 @@ class driverLidars:
                     while self.serial_connection.is_moving(constants.servosIDs[lidarNb]) == True:
                         timeout -= 1
                         if timeout <= 0:
-                            print("    Problem with the servo", lidarNb+1,"!")
+                            cust_print("    Problem with the servo" + str(lidarNb+1) + "!")
                             self.disconnect()
                             return -1
                         time.sleep(0.1)
@@ -172,13 +157,13 @@ class driverLidars:
                 else:
                     file.append(open(path,'a'))
             except:
-                print('    Cannot open file for lidar',lidarNb+1,'!')
+                cust_print('    Cannot open file for lidar' + str(lidarNb+1) + '!')
                 self.disconnect()
                 return -1
             try:
                 iterMeas.append(self.lidars[lidarNb].iter_measures())
             except:
-                print('    Cannot communicate with lidar',lidarNb+1,'!')
+                cust_print('    Cannot communicate with lidar' + str(lidarNb+1) + '!')
                 return -1 
             datasLeft.append(constants.nbOfDatasToRetrieve)
             done.append(False)
@@ -192,12 +177,12 @@ class driverLidars:
                         dist = datas[3]
                         # First selection of points 
                         if angle >= -90 and angle <= +90 and dist > 0:
-                            file[lidarNb].write(str(angle) + ' ' + str(current_angle_z) + ' ' + str(dist) + '\n')
+                            file[lidarNb].write(str(angle) + ' ' + str(-current_angle_z) + ' ' + str(dist) + '\n')
                             datasLeft[lidarNb] -= 1
                             if datasLeft[lidarNb] < 1:
                                 done[lidarNb] = True
         except:
-            print('    Cannot retrieve datas on lidar ',lidarNb+1,'!')
+            cust_print('    Cannot retrieve datas on lidar ' + str(lidarNb+1) + '!')
             self.disconnect()
             return -1
         
@@ -205,7 +190,7 @@ class driverLidars:
             try:
                 self.lidars[lidarNb].stop()
             except:
-                print('    Cannot communicate with lidar',lidarNb+1,'!')
+                cust_print('    Cannot communicate with lidar'+ str(lidarNb+1) + '!')
                 return -1
 
             file[lidarNb].close()
@@ -213,14 +198,14 @@ class driverLidars:
     
     
     def scan_datas(self,height):
-        print('Datas scanning...')
+        cust_print('Datas scanning...')
         self.start_motors()
         
         # Clean the infos file
         try:
             infoFile = open(constants.dirPath + r'/scan_infos.txt','w')
         except:
-            print("    Cannot open infos file")
+            cust_print("    Cannot open infos file")
             return -1
         
         [inclination_array,nbMes_array] = compute_angle_array_for_scan(height)
@@ -228,9 +213,9 @@ class driverLidars:
         for i in range(len(inclination_array)):
             try:
                 # Broadcast moving action to all servos
-                inclination_array[i] = self.servos_goto(BROADCAST_ID,inclination_array[i])
+                self.servos_goto(BROADCAST_ID,inclination_array[i])
             except:
-                print("    Problem with the serial connection!")
+                cust_print("    Problem with the serial connection!")
                 self.disconnect()
                 return -1
             
@@ -249,18 +234,18 @@ class driverLidars:
             infoFile = open(constants.dirPath + r'/scan_infos.txt','a')
             infoFile.write(str(height))
         except:
-            print("    Cannot open infos file")
+            cust_print("    Cannot open infos file")
             return -1
         
         try:
             # Broadcast moving action to all servos
             self.servos_goto(BROADCAST_ID,0)
         except:
-            print("    Problem with the serial connection!")
+            cust_print("    Problem with the serial connection!")
             self.disconnect()
             return -1
     
-        print('    All the datas have been successfully retrieved.') 
+        cust_print('    All the datas have been successfully retrieved.') 
         self.stop_motors()
         return 0
         
