@@ -2,14 +2,19 @@ from pyax12.connection import Connection
 
 def disp_menu():
     global servos
-    
+
+    try:
+        servosIDs = []
+        for i in range(254):
+            if servos.ping(i):
+                servosIDs.append(i)
+                if len(servosIDs) == 3:
+                    break
+    except:
+        print("No servos found")
+        exit(1)
+
     print("\nAvailable servos: ",end="")
-    servosIDs = []
-    for i in range(254):
-        if servos.ping(i):
-            servosIDs.append(i)
-            if len(servosIDs) == 3:
-                break
     for i in range(len(servosIDs)):
         print(servosIDs[i]," ",end="")
     print("")
@@ -96,6 +101,10 @@ def disp_menu():
                 servos.set_ccw_angle_limit(ID,ccw_angle_limit,degrees=True)
             else:
                 print('    Wrong angle limit (-150 to 150)!')
+        else:
+            print('    Wrong ID!')
+        
+        
             
     else:
         print('    Wrong input!')

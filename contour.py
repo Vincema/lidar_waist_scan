@@ -10,11 +10,11 @@ from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS_START = 15
+NB_OF_CTRL_POINTS = 10
 ORDER = 3
-NB_POINTS_BSPL = 10*NB_OF_CTRL_POINTS_START
-APPROXIMATION_ERROR_TRESHOLD = 2.0
-ITER_MAX = 1
+NB_POINTS_BSPL = 50*NB_OF_CTRL_POINTS
+APPROXIMATION_ERROR_TRESHOLD = 1.0
+ITER_MAX = 10
 REGUL_WEIGHT = 0.001
 
 
@@ -102,7 +102,7 @@ class bspline:
         for i in range(self.sample_nb):
             pt[i] = self.estimate(u[i])
             #pt2[i] = self.estimate_with_basis(u[i])
-        plt.plot(pt[:,0],pt[:,1],'b',ms=3.5)
+        plt.plot(pt[:,0],pt[:,1],ms=3.5)
         #plt.plot(pt2[:,0],pt2[:,1],'.r')
         if plot_ctrl_pts:
             plt.plot(self.c[0],self.c[1],'g')
@@ -111,7 +111,7 @@ class bspline:
 def init_SDM(points):
     origin,radius = utility.fit_circle(points)
 
-    n = NB_OF_CTRL_POINTS_START
+    n = NB_OF_CTRL_POINTS
     n_sect = np.zeros(n,'int')
     mean_sect = np.zeros(n)
     amin = np.zeros(n)
@@ -231,7 +231,7 @@ def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
                 const[i]   -= b_terms[i]*neigh_pt_norm_Nox  #dist_distRad*b_terms[i]*Ta_tk[0]*prodNeighPtTang 
                 const[i+n] -= b_terms[i]*neigh_pt_norm_Noy  #dist_distRad*b_terms[i]*Ta_tk[1]*prodNeighPtTang
         else:
-            cust_print("Error rad < dist: ",rad,'<',dist)
+            cust_print("Error rad < dist: " + str(rad) + '<',dist)
             raise
 
     return esd,const
@@ -349,7 +349,7 @@ def compute_regularization(bspl):
     reg = np.zeros((2*n,2*n))
     return reg,const
 
-    """
+"""
     n = bspl.n_c
     const = np.zeros(2*n)
     reg = np.zeros((2*n,2*n))
@@ -397,7 +397,8 @@ def compute_regularization(bspl):
             reg[i+n][j+0] = 0
             reg[i+n][j+n] = temp1*temp3
     return reg,const
-    """
+"""
+
     
 def iter_SDM(points,bspl):
     iter_max = ITER_MAX
@@ -414,12 +415,13 @@ def iter_SDM(points,bspl):
 
         # Approximation error
         approx_error = compute_approx_error(dist)
-        if nb_iter > 0:
-            cust_print("    Fit average error: ", approx_error)
+        if nb_iter == 0:
+            cust_print("    Fit average error init: " + str(approx_error))
+        else:
+            cust_print("    Fit average error: " + str(approx_error))
 
         # Stop conditions
-        epsi_approx_error = APPROXIMATION_ERROR_TRESHOLD
-        if approx_error <= epsi_approx_error:
+        if approx_error <= APPROXIMATION_ERROR_TRESHOLD:
             break
         if approx_error >= temp_approx_error:
             bspl = temp_bspl
@@ -444,13 +446,13 @@ def iter_SDM(points,bspl):
         D = solve(fsd,const)
 
         # Update spline
-        P = move_ctrl_points(bspl,bspl.c,D,zeros)
+        P = move_ctrl_points(bspl,bspl.c,0.5*D,zeros)
         bspl.update()
         #bspl.plot_curve()
         #plt.show()
 
         nb_iter += 1  
-    return bspl
+    return bspl, approx_error
 
 
 def SDM_algorithm(points):
@@ -461,12 +463,12 @@ def SDM_algorithm(points):
     #bspl.plot_curve(True)
     #plt.show()
     
-    #try:
-    bspl = iter_SDM(points,bspl)
-    #except:
-    #    cust_print("An error occured")
+    try:
+        bspl, error = iter_SDM(points,bspl)
+    except:
+        cust_print("An error occured")
     bspl.plot_curve(False)
-    return bspl
+    return bspl, error
 
 def compute_circumference(bspl):
     n = 1000
@@ -481,15 +483,15 @@ def contour():
     
     #path = constants.dirPath + r'/2dPointsTest.txt'
     #datas = np.loadtxt(path, dtype='d', delimiter=' ')
+
+    3plt.plot(datas[:,0], datas[:,1], '.r', ms=3)
     
     points = np.zeros((len(datas),2))
-
     for i in range(len(datas)):
         points[i] = [datas[i].x,datas[i].y]
         #points[i] = [datas[i,0],datas[i,1]]
-    global NB_OF_CTRL_POINTS_START
 
-    bspl = SDM_algorithm(points)
+    bspl, error = SDM_algorithm(points)
     circum = compute_circumference(bspl)
 
     cust_print('\nCircumference: ' + str(format(circum, '.2f')) + 'mm')

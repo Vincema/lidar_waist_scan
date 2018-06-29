@@ -1,3 +1,6 @@
+import constants
+import bb_serial
+from bb_serial import cust_print, cust_read
 import lidars
 import utility
 import contour
@@ -10,27 +13,29 @@ import warnings
 import time
 
 def disp_menu():
-    print('')
-    print('----MENU----') 
+    cust_print("")
+    cust_print("")
+    cust_print('----MENU----') 
     if drv.areConnected == 0:
-        print('1: Connect to lidars')
-        print('2: Plot datas')
-        print('3: Compute circumference')
+        cust_print('1: Connect to lidars')
+        cust_print('2: Plot datas')
+        cust_print('3: Compute circumference')
     else:
-        print('1: Disconnect to lidars')
-        print('2: Start motors')
-        print('3: Stop motors')
-        print('4: Launch scan')
-        print('5: Plot datas')
-        print('6: Compute circumference')
-    print('q: Quit')
+        cust_print('1: Disconnect to lidars')
+        cust_print('2: Start motors')
+        cust_print('3: Stop motors')
+        cust_print('4: Launch scan')
+        cust_print('5: Plot datas')
+        cust_print('6: Compute circumference')
+    cust_print('q: Quit')
 
     
 def execute_actions():
-    choice = input('    Waiting for input: ')
+    choice = cust_read('    Waiting for input: ')
     if choice == 'q' or choice == 'Q':
         if drv.areConnected == 1:
             drv.disconnect()
+            bb_serial.bb_ser.close_bb_serial()
         return True
     
     if drv.areConnected == 0:
@@ -40,13 +45,14 @@ def execute_actions():
         elif choice == '2':
             lidarsSet.read_datas_files()
             lidarsSet.plot_raw_datas()
-            print('\nClose all figures to continue...\n')
-            plt.show(block=True)
+            if constants.disp_charts:
+                cust_print('\nClose all figures to continue...\n')
+                plt.show(block=True)
         elif choice == '3':
             # Compute circumference
             compute_algo_circumference()
         else:
-            print('        Wrong input!')
+            cust_print('        Wrong input!')
     else:
         if choice == '1':
             # Disconnect to lidar
@@ -60,11 +66,11 @@ def execute_actions():
         elif choice == '4':
             run_scan = False
             try:
-                height = int(input('    Please enter patient\'s height in cm: '))
+                height = int(cust_read('    Please enter patient\'s height in cm: '))
                 if height > 0:
                     run_scan = True
             except:
-                print('    Incorrect height!')
+                cust_print('    Incorrect height!')
 
             # Data scanning
             if run_scan:
@@ -75,12 +81,13 @@ def execute_actions():
         elif choice == '5':
             lidarsSet.read_datas_files()
             lidarsSet.plot_raw_datas()
-            print('\nClose all figures to continue...\n')
-            plt.show(block=True)
+            if constants.disp_charts:
+                cust_print('\nClose all figures to continue...\n')
+                plt.show(block=True)
         elif choice == '6':
             compute_algo_circumference()
         else:
-            print('        Wrong input!')
+            cust_print('        Wrong input!')
     return False            
         
         
@@ -104,18 +111,23 @@ def compute_algo_circumference():
         # Compute contour
         contour.contour()
 
-        print("Circumference computed in: ", time.clock() - start,' sec.')
+        cust_print("Circumference computed in: " + str(time.clock() - start) + ' sec.')
 
         # Show the plots
-        print('\nClose all figures to continue...\n')
-        plt.show(block=True)
+        if constants.disp_charts:
+            cust_print('\nClose all figures to continue...\n')
+            plt.show(block=True)
 
     else:
-        print('    No data point has been read in the desired area!')
+        cust_print('    No data point has been read in the expected area!')
 
 
 # Ignore warnings
 warnings.simplefilter("ignore")
+
+# Open bb serial
+if constants.use_bb_serial:
+    bb_serial.bb_ser = serial.bitbang_serial(constants.bb_serial_RX, constants.bb_serial_TX, constants.bb_baudrate)
    
 # Init lidars infos
 lidarsSet = lidars.setOfLidars()
@@ -128,7 +140,7 @@ while end == False:
     disp_menu()
     end = execute_actions()
 
-print("Program ended")
+cust_print("Program ended")
 
 
 
