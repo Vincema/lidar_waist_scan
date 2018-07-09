@@ -89,37 +89,34 @@ def execute_actions():
         
         
 def compute_algo_circumference():
-    try:
-        # Time measurement
-        start = time.clock() 
+    # Time measurement
+    start = time.clock() 
 
-        # Read lidars datas
-        lidarsSet.read_datas_files()
+    # Read lidars datas
+    lidarsSet.read_datas_files()
 
-        # Plot raw datas
-        lidarsSet.plot_raw_datas()
+    # Plot raw datas
+    lidarsSet.plot_raw_datas()
+    
+    # Compute raw datas into merged datas
+    lidarsSet.compute_raw_datas()
+
+    # Remove outliers
+    if len(utility.mergedPointsXY) > 0:
+        #utility.remove_outliers()
         
-        # Compute raw datas into merged datas
-        lidarsSet.compute_raw_datas()
+        # Compute contour
+        contour.contour()
 
-        # Remove outliers
-        if len(utility.mergedPointsXY) > 0:
-            #utility.remove_outliers()
-            
-            # Compute contour
-            contour.contour()
+        cust_print("Circumference computed in: " + str(time.clock() - start) + ' sec.')
 
-            cust_print("Circumference computed in: " + str(time.clock() - start) + ' sec.')
+        # Show the plots
+        if constants.disp_charts:
+            cust_print('\nClose all figures to continue...\n')
+            plt.show(block=True)
 
-            # Show the plots
-            if constants.disp_charts:
-                cust_print('\nClose all figures to continue...\n')
-                plt.show(block=True)
-
-        else:
-            cust_print('    No data point has been read in the expected area!')
-    except:
-        cust_print(    'An error occured')
+    else:
+        cust_print('    No data point has been read in the expected area!')
 
 # Ignore warnings
 warnings.simplefilter("ignore")
@@ -136,8 +133,11 @@ drv = lid.driverLidars()
 
 end = False
 while end == False:
-    disp_menu()
-    end = execute_actions()
+    try:
+        disp_menu()
+        end = execute_actions()
+    except:
+        cust_print("An error occured")
 
 cust_print("Program ended")
 

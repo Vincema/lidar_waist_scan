@@ -8,14 +8,14 @@ use_bb_serial = False
 disp_charts = True
 
 # Path to the datas directory
-dataPath = os.getcwd() + '\data'
+dataPath = os.getcwd() + '/data'
 
 lidarsAngle = [11*180/6,
                7*180/6,
                3*180/6]
 
 # Distance of lidars from center
-lidarsDist = 1000
+lidarsDist = 750
 
 # Size of an edge of the equi triangle
 edgeLen = 3*lidarsDist/math.sqrt(3)
@@ -27,7 +27,7 @@ lidarsDistFromRotAxis = 50
 lidarsHeight = 1000
 
 # Size of the zone from the lidar where measurement can't be performed (mm)
-deadZone = 300
+deadZone = 200
 
 # Bounds of plots
 boundsDatasLidars = [-600,
@@ -35,7 +35,7 @@ boundsDatasLidars = [-600,
                      -600,
                      600]
 
-# Nb of datas to retrieve for each lidar in total
+# Nb of datas to retrieve for each lidar for each angle
 nbOfDatasToRetrieve = 100
 
 # Offset angle lidars
