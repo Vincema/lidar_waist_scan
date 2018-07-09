@@ -479,12 +479,12 @@ def compute_circumference(bspl):
     return circ
 
 def contour():
-    datas = utility.clusteredPointsXY
+    datas = utility.mergedPointsXY
     
-    #path = constants.dirPath + r'/2dPointsTest.txt'
+    #path = constants.dataPath + r'/2dPointsTest.txt'
     #datas = np.loadtxt(path, dtype='d', delimiter=' ')
 
-    3plt.plot(datas[:,0], datas[:,1], '.r', ms=3)
+    #plt.plot(datas[:,0], datas[:,1], '.r', ms=3)
     
     points = np.zeros((len(datas),2))
     for i in range(len(datas)):

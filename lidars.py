@@ -23,7 +23,8 @@ class lidarInfos:
         self.pointDatas = []
         visionAngle = (self.angle + 180)%360 # Get the opposite of this angle
 
-        # datas = [horizontal_angle, vertical_angle, distance]
+        # Compute the 3D location of each point from the vertical and horizontal angles and the distance 
+            # datas = [horizontal_angle, vertical_angle, distance]
         for i in range(len(datas)):
             dist = datas[i][2]
             c1 = math.cos(visionAngle*math.pi/180)
@@ -51,10 +52,11 @@ class setOfLidars:
             self.lidarsSet.append(lidarInfos(constants.lidarsDist,constants.lidarsAngle[i],constants.lidarsHeight))
 
     def read_datas_files(self):
+        hgt = reader.read_scan_infos()
         for i in range(3):
-            # datas,hgt = reader.read_data_single_lidar(i)
-            datas,hgt = reader.read_data_single_lidar(0)
-            self.lidarsSet[i].save_datas(datas,hgt)
+            # data,hgt = reader.read_data_single_lidar(i)
+            data = reader.read_data_lidar(0)
+            self.lidarsSet[i].save_datas(data,hgt)
 
     def plot_origin_and_lidars_2D(self):
         plt.figure(utility.figMerge)
@@ -127,7 +129,7 @@ class setOfLidars:
         for i in range(len(utility.mergedPointsXY)):
             mergedPointsX.append(utility.mergedPointsXY[i].x)
             mergedPointsY.append(utility.mergedPointsXY[i].y)
-        plt.plot(mergedPointsX,mergedPointsY,'g.',label='Raw datas',ms=2)
+        plt.plot(mergedPointsX,mergedPointsY,'k.',label='Raw datas',ms=2.5)
         plt.gca().set_aspect('equal', adjustable='box')
         plt.axis(constants.boundsDatasLidars)
 

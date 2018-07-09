@@ -71,13 +71,10 @@ def execute_actions():
                     run_scan = True
             except:
                 cust_print('    Incorrect height!')
-
             # Data scanning
             if run_scan:
                 if drv.check_link_state() == 0:
-                    lin_coeffs_navel_height = [0.66410011, -105.89395578]
-                    estim_navel_height = (height*10)*lin_coeffs_navel_height[0] + lin_coeffs_navel_height[1]
-                    drv.scan_datas(estim_navel_height)
+                    drv.scan_datas(height)
         elif choice == '5':
             lidarsSet.read_datas_files()
             lidarsSet.plot_raw_datas()
@@ -92,35 +89,37 @@ def execute_actions():
         
         
 def compute_algo_circumference():
-    # Time measurement
-    start = time.clock() 
+    try:
+        # Time measurement
+        start = time.clock() 
 
-    # Read lidars datas
-    lidarsSet.read_datas_files()
+        # Read lidars datas
+        lidarsSet.read_datas_files()
 
-    # Plot raw datas
-    lidarsSet.plot_raw_datas()
-    
-    # Compute raw datas into merged datas
-    lidarsSet.compute_raw_datas()
-
-    # Remove outliers
-    if len(utility.mergedPointsXY) > 0:
-        utility.remove_outliers()
+        # Plot raw datas
+        lidarsSet.plot_raw_datas()
         
-        # Compute contour
-        contour.contour()
+        # Compute raw datas into merged datas
+        lidarsSet.compute_raw_datas()
 
-        cust_print("Circumference computed in: " + str(time.clock() - start) + ' sec.')
+        # Remove outliers
+        if len(utility.mergedPointsXY) > 0:
+            #utility.remove_outliers()
+            
+            # Compute contour
+            contour.contour()
 
-        # Show the plots
-        if constants.disp_charts:
-            cust_print('\nClose all figures to continue...\n')
-            plt.show(block=True)
+            cust_print("Circumference computed in: " + str(time.clock() - start) + ' sec.')
 
-    else:
-        cust_print('    No data point has been read in the expected area!')
+            # Show the plots
+            if constants.disp_charts:
+                cust_print('\nClose all figures to continue...\n')
+                plt.show(block=True)
 
+        else:
+            cust_print('    No data point has been read in the expected area!')
+    except:
+        cust_print(    'An error occured')
 
 # Ignore warnings
 warnings.simplefilter("ignore")

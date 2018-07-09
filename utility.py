@@ -61,17 +61,14 @@ def fit_circle(points):
 
 
 def is_useful_data(pointXYZ):
-    # Is in the circle of 75% of the radius of the outter circle formed by the lidars
+    # Is in the circle formed by the lidars
     if math.sqrt(pointXYZ.x**2 + pointXYZ.y**2) <= (constants.lidarsDist-constants.deadZone):
-        # cust_print (pointXYZ.z)
-        # cust_print (patientHeight-constants.margin_bot)
-        # cust_print (patientHeight+constants.margin_top)
-        # cust_print (" ")
         # Is at the good height
         if pointXYZ.z >= patientHeight-constants.margin_bot and pointXYZ.z <= patientHeight+constants.margin_top:
             return True
     return False
 
+"""
 def get_biggest_cluster(points,v1,v2):
     point_cluster = get_clusters(points,v1,v2)
     n = len(points)
@@ -278,5 +275,5 @@ def remove_outliers():
 
     plt.figure(figMerge)
     plt.plot(x,y,'.k',ms=2)
-
+"""
 
