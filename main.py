@@ -123,7 +123,7 @@ warnings.simplefilter("ignore")
 
 # Open bb serial
 if constants.use_bb_serial:
-    bb_serial.bb_ser = serial.bitbang_serial(constants.bb_serial_RX, constants.bb_serial_TX, constants.bb_baudrate)
+    bb_serial.bb_ser = bb_serial.bitbang_serial(constants.bb_serial_RX, constants.bb_serial_TX, constants.bb_baudrate)
    
 # Init lidars infos
 lidarsSet = lidars.setOfLidars()

@@ -15,17 +15,31 @@ class bitbang_serial:
                 self.baudrate = baudr
                 self.pi_gpio_handler.set_mode(self.RX_pin, pigpio.INPUT)
                 self.pi_gpio_handler.set_mode(self.TX_pin, pigpio.OUTPUT)
-                
+
                 pigpio.exceptions = False
                 self.pi_gpio_handler.bb_serial_read_close(self.RX_pin) # In case the port is alrdy open
                 pigpio.exceptions = True
-
-                # Open serial
-                self.pi_gpio_handler.bb_serial_read_open(self.RX_pin, self.baudrate)   
+                self.pi_gpio_handler.bb_serial_read_open(self.RX_pin, self.baudrate)
                 break
             except:
                 time.sleep(1)
                 pass
+
+        loop_end = False
+        self.write_line_bb_serial('')
+        self.write_line_bb_serial('')
+        while True:
+            self.write_line_bb_serial('Press \'c\' to connect serial.', False)
+            self.write_line_bb_serial('\r', False)
+            time.sleep(0.1)
+            (count, input_bytes) = self.read_bb_serial()
+            for i in range(count):
+                if input_bytes[i] == ord('c') or input_bytes[i] == ord('C'):
+                    loop_end = True
+                    break
+            if loop_end:
+                break
+            
 
     def close_bb_serial(self):
         self.pi_gpio_handler.bb_serial_read_close(self.RX_pin)
@@ -68,7 +82,6 @@ class bitbang_serial:
                 pass
             self.pi_gpio_handler.wave_delete(wv)
         
-
 def cust_print(msg):
     if constants.use_bb_serial:
         bb_ser.write_line_bb_serial(msg)
