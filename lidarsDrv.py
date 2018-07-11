@@ -22,7 +22,7 @@ def compute_angle_array_for_scan(height):
     hgt_diff_mbot = constants.lidarsHeight - (height - constants.margin_bot_meas)
     
     min_meas_dist = constants.deadZone
-    max_meas_dist = 2*(constants.lidarsDist-constants.deadZone)
+    max_meas_dist = 2*(constants.lidarsDist-constants.deadZone) + constants.deadZone
     
     if height > constants.lidarsHeight:
         hgt1 = hgt_diff_mbot
@@ -68,9 +68,9 @@ class driverLidars:
                 self.lidars.append(RPLidar(constants.serialPort[lidarNb],baudrate=115200))
                 self.lidars[lidarNb].connect()
             except:
-                cust_print('    Cannot connect to the lidar ' + str(lidarNb+1) + '!')
+                cust_print('    Cannot connect to the lidar' + str(lidarNb+1) + '!')
                 return -1
-            cust_print('    Connected to lidar ' + str(lidarNb+1))
+            cust_print('    Connected to lidar' + str(lidarNb+1))
             
             try:
                 # Try to ping the motor
@@ -79,9 +79,9 @@ class driverLidars:
                 self.serial_connection.set_speed(BROADCAST_ID,constants.servosSpeed)
                 self.servos_goto(constants.servosIDs[lidarNb],0)
             except:
-                cust_print('    Cannot connect to the servo ' + str(lidarNb+1) + '!')
+                cust_print('    Cannot connect to the servo' + str(lidarNb+1) + '!')
                 return -1
-            cust_print('    Connected to servo ' + str(lidarNb+1))
+            cust_print('    Connected to servo' + str(lidarNb+1))
             time.sleep(0.25) # To avoid a too high current drain
         self.areConnected = 1
         return 0
@@ -94,7 +94,7 @@ class driverLidars:
             self.lidars[lidarNb].stop()
             self.lidars[lidarNb].disconnect()
             time.sleep(0.25) # To avoid to drain too much current
-            cust_print('    Disconnected to lidar ' + str(lidarNb+1))
+            cust_print('    Disconnected to lidar' + str(lidarNb+1))
         self.lidars[:] = []
         self.areConnected = 0
 
@@ -106,14 +106,14 @@ class driverLidars:
             try:
                 self.lidars[lidarNb].get_health()  
             except:
-                cust_print('Link error with lidar ' + str(lidarNb+1))
+                cust_print('Link error with lidar' + str(lidarNb+1))
                 self.disconnect()
                 return -1
             try:
                 if self.serial_connection.ping(constants.servosIDs[lidarNb]) == False:
                     raise
             except:
-                cust_print('Link error with servo ' + str(lidarNb+1))
+                cust_print('Link error with servo' + str(lidarNb+1))
                 self.disconnect()
                 return -1
         return 0
@@ -151,19 +151,19 @@ class driverLidars:
         done = []
         for lidarNb in range(constants.nb_of_lidars):
             try:
-                path = constants.dataPath + r'/DatasL' + str(lidarNb+1) + '.txt'
+                path = constants.dirPath + r'/DatasL' + str(lidarNb+1) + '.txt'
                 if erase_file == True:
                     file.append(open(path,'w'))
                 else:
                     file.append(open(path,'a'))
             except:
-                cust_print('    Cannot open file for lidar ' + str(lidarNb+1) + '!')
+                cust_print('    Cannot open file for lidar' + str(lidarNb+1) + '!')
                 self.disconnect()
                 return -1
             try:
                 iterMeas.append(self.lidars[lidarNb].iter_measures())
             except:
-                cust_print('    Cannot communicate with lidar ' + str(lidarNb+1) + '!')
+                cust_print('    Cannot communicate with lidar' + str(lidarNb+1) + '!')
                 return -1 
             datasLeft.append(constants.nbOfDatasToRetrieve)
             done.append(False)
@@ -190,7 +190,7 @@ class driverLidars:
             try:
                 self.lidars[lidarNb].stop()
             except:
-                cust_print('    Cannot communicate with lidar '+ str(lidarNb+1) + '!')
+                cust_print('    Cannot communicate with lidar'+ str(lidarNb+1) + '!')
                 return -1
 
             file[lidarNb].close()
@@ -203,12 +203,12 @@ class driverLidars:
         # Get height from stature
         lin_coeffs_navel_height = [0.66410011, -105.89395578]
         height = (stature*10)*lin_coeffs_navel_height[0] + lin_coeffs_navel_height[1]
-        
+
         self.start_motors()
         
         # Clean the infos file
         try:
-            infoFile = open(constants.dataPath + r'/scan_infos.txt','w')
+            infoFile = open(constants.dirPath + r'/scan_infos.txt','w')
         except:
             cust_print("    Cannot open infos file")
             return -1
@@ -236,7 +236,7 @@ class driverLidars:
             
         # Write the height of scan in the info file
         try:
-            infoFile = open(constants.dataPath + r'/scan_infos.txt','a')
+            infoFile = open(constants.dirPath + r'/scan_infos.txt','a')
             infoFile.write(str(height))
         except:
             cust_print("    Cannot open infos file")
