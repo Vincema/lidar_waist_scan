@@ -4,11 +4,11 @@ import os
 #### DEBUG ####
 # Number of lidars that should be connected
 nb_of_lidars = 1
-use_bb_serial = False
-disp_charts = True
+use_bb_serial = True
+disp_charts = False
 
 # Path to the datas directory
-dataPath = os.getcwd() + '/data'
+dataPath = r'/home/pi/Documents/lidar_waist_scan/data'
 
 lidarsAngle = [11*180/6,
                7*180/6,
