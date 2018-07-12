@@ -151,7 +151,7 @@ class driverLidars:
         done = []
         for lidarNb in range(constants.nb_of_lidars):
             try:
-                path = constants.dirPath + r'/DatasL' + str(lidarNb+1) + '.txt'
+                path = constants.dataPath + r'/DatasL' + str(lidarNb+1) + '.txt'
                 if erase_file == True:
                     file.append(open(path,'w'))
                 else:
@@ -173,7 +173,7 @@ class driverLidars:
                 for lidarNb in range(constants.nb_of_lidars):
                     if done[lidarNb] == False:
                         datas = next(iterMeas[lidarNb])
-                        angle = -1*((datas[2]+constants.offset_angle_lidar)%360 - 180.0)
+                        angle = -1*((datas[2]+constants.offset_angle_lidar+180.0)%360 - 180.0)
                         dist = datas[3]
                         # First selection of points 
                         if angle >= -90 and angle <= +90 and dist > 0:
@@ -208,7 +208,7 @@ class driverLidars:
         
         # Clean the infos file
         try:
-            infoFile = open(constants.dirPath + r'/scan_infos.txt','w')
+            infoFile = open(constants.dataPath + r'/scan_infos.txt','w')
         except:
             cust_print("    Cannot open infos file")
             return -1
@@ -236,7 +236,7 @@ class driverLidars:
             
         # Write the height of scan in the info file
         try:
-            infoFile = open(constants.dirPath + r'/scan_infos.txt','a')
+            infoFile = open(constants.dataPath + r'/scan_infos.txt','a')
             infoFile.write(str(height))
         except:
             cust_print("    Cannot open infos file")
