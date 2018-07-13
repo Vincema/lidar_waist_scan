@@ -37,7 +37,7 @@ def compute_angle_array_for_scan(height):
         angle = math.atan2(hgt1,dist1)
         dist2 = hgt2/math.tan(angle)
         currentDist += (dist2-dist1)
-        angle_array.append(-angle*180/math.pi)
+        angle_array.append(angle*180/math.pi)
         meas_nb.append(constants.nbOfDatasToRetrieve)
         #if dist2 > max_meas_dist:
         #    meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist)))
@@ -99,7 +99,7 @@ class driverLidars:
         self.areConnected = 0
 
     def servos_goto(self,servosID,position):   
-        self.serial_connection.goto(servosID,position,degrees=True)
+        self.serial_connection.goto(servosID,-position,degrees=True)
 
     def check_link_state(self):
         for lidarNb in range(constants.nb_of_lidars):

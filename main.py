@@ -35,6 +35,7 @@ def execute_actions():
     if choice == 'q' or choice == 'Q':
         if drv.areConnected == 1:
             drv.disconnect()
+            cust_print("Program ended")
             bb_serial.bb_ser.close_bb_serial()
         return True
     
@@ -69,6 +70,8 @@ def execute_actions():
                 height = int(cust_read('    Please enter patient\'s height in cm: '))
                 if height > 0:
                     run_scan = True
+                else:
+                    raise
             except:
                 cust_print('    Incorrect height!')
             # Data scanning
@@ -138,8 +141,6 @@ while end == False:
         end = execute_actions()
     except:
         cust_print("An error occured")
-
-cust_print("Program ended")
 
 
 

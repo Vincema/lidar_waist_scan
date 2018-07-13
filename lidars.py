@@ -21,24 +21,38 @@ class lidarInfos:
     
     def save_datas(self,datas,patientHeight):
         self.pointDatas = []
-        visionAngle = (self.angle + 180)%360 # Get the opposite of this angle
+        localToSystemFrameAngle = (self.angle + 180 - 90)%360 # Get the opposite of te angle of the LIDAR
 
         # Compute the 3D location of each point from the vertical and horizontal angles and the distance 
-            # datas = [horizontal_angle, vertical_angle, distance]
+        # datas = [horizontal_angle, vertical_angle, distance]
         for i in range(len(datas)):
+            alpha = datas[i][0]
+            theta = datas[i][1]
             dist = datas[i][2]
-            c1 = math.cos(visionAngle*math.pi/180)
-            c2 = math.cos(datas[i][1]*math.pi/180)
-            c3 = math.cos(datas[i][0]*math.pi/180)
-            s1 = math.sin(visionAngle*math.pi/180)
-            s2 = math.sin(datas[i][1]*math.pi/180)
-            s3 = math.sin(datas[i][0]*math.pi/180)
-            x = dist*((c1*c2*c3)-(s1*s3))
-            x += (self.distCenter + constants.lidarsDistFromRotAxis * (1 - np.abs(math.cos(datas[i][1]*math.pi/180)))) * math.cos(self.angle*math.pi/180)
-            y = dist*((c1*s3)+(c2*c3*s1))
-            y += (self.distCenter + constants.lidarsDistFromRotAxis * (1 - np.abs(math.cos(datas[i][1]*math.pi/180)))) * math.sin(self.angle*math.pi/180)
-            z = dist*(-1)*(c3*s2)
-            z += self.position.z + (constants.lidarsDistFromRotAxis * math.sin(datas[i][1]*math.pi/180))
+
+            c1 = math.cos(localToSystemFrameAngle*math.pi/180)
+            c2 = math.cos(theta*math.pi/180)
+            c3 = math.cos(alpha*math.pi/180)
+            s1 = math.sin(localToSystemFrameAngle*math.pi/180)
+            s2 = math.sin(theta*math.pi/180)
+            s3 = math.sin(alpha*math.pi/180)
+
+            x = (-c1*s3)-(s1*c2*c3)
+            y = (c1*c2*c3)-(s3*s1)
+            z = c3*s2
+
+            x *= dist
+            y *= dist
+            z *= dist
+
+            x += self.distCenter * math.cos(self.angle*math.pi/180)
+            y += self.distCenter * math.sin(self.angle*math.pi/180)
+            z += self.position.z
+
+            x += constants.lidarsDistFromRotAxis * math.cos(self.angle*math.pi/180) * (1 - math.cos(theta*math.pi/180))
+            y += constants.lidarsDistFromRotAxis * math.sin(self.angle*math.pi/180) * (1 - math.cos(theta*math.pi/180))
+            z += constants.lidarsDistFromRotAxis * -math.sin(theta*math.pi/180)
+
             self.pointDatas.append(utility.point(x,y,z))
            
         # Save patient's height

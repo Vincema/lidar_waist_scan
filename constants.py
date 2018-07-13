@@ -5,7 +5,7 @@ import os
 # Number of lidars that should be connected
 nb_of_lidars = 1
 use_bb_serial = True
-disp_charts = False
+disp_charts = True
 
 # Path to the datas directory
 dataPath = r'/home/pi/Documents/lidar_waist_scan/data'
