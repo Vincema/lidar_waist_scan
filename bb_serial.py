@@ -56,15 +56,8 @@ class bitbang_serial:
                     if input_bytes[i] == 13: # Enter
                         end = True
                         break
-                    elif input_bytes[i] == 127: # Backspace
-                        if str_line != "":
-                            self.write_line_bb_serial('\033[1D',False)
-                            self.write_line_bb_serial(" ",False)
-                            self.write_line_bb_serial('\033[1D',False)
-                            str_line = str_line[:-1]  
                     else:
                         str_line += input_str[i]
-                        self.write_line_bb_serial(input_str[i],False)
         return str_line
 
     def read_bb_serial(self):
