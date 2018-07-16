@@ -5,12 +5,12 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
-from scipy.interpolate import BSpline, splev, splprep, splrep, CubicSpline
+from scipy.interpolate import BSpline, splprep
 from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS = 10
+NB_OF_CTRL_POINTS = 15
 ORDER = 3
 NB_POINTS_BSPL = 50*NB_OF_CTRL_POINTS
 APPROXIMATION_ERROR_TRESHOLD = 1.0
@@ -23,31 +23,28 @@ class bspline:
         x = ctrl_pts[:,0]
         y = ctrl_pts[:,1]
         self.n_c = len(x)
-        self.t = np.linspace(0,len(x)+ORDER+1-1,len(x)+ORDER+1)
-        self.t_max = self.n_c
-        self.t_min = 0.0
+        self.t = range(-ORDER, ORDER+self.n_c+1)
+        self.t_max = self.n_c 
+        self.t_min = 0
         self.c = np.array([x,y])
         self.update()
 
     def update(self):
-        self.n_c = len(self.c[0])
         self.basis = []
-        for i in range(self.n_c):
+
+        x = np.append(self.c[0],self.c[0,0:ORDER])
+        y = np.append(self.c[1],self.c[1,0:ORDER])
+        self.c_periodic = np.array([x,y])
+        self.n_c_periodic = len(x)
+        
+        for i in range(self.n_c_periodic):
             self.basis.append(BSpline.basis_element(self.t[i:i+ORDER+2],False))
         # Rearrange the basis element because the i-th basis element defines the curve at the i-th+ORDER ctrl point
-        for i in range(self.n_c-ORDER+1):
-            self.basis.append(self.basis.pop(0))
-
-        n = self.n_c
-        x = np.zeros(n+1)
-        y = np.zeros(n+1)
-        t = self.t[:n+1]
-        for i in range(n+1):
-            [x[i],y[i]] = self.estimate_with_basis(t[i])
-        x[-1] = x[0]
-        y[-1] = y[0]
-        self.bsplx = CubicSpline(t,x,bc_type='periodic')
-        self.bsply = CubicSpline(t,y,bc_type='periodic')
+        #for i in range(self.n_c-ORDER+1):
+        #    self.basis.append(self.basis.pop(0))
+        
+        self.bsplx = BSpline(self.t,x,ORDER,False)
+        self.bsply = BSpline(self.t,y,ORDER,False)
         self.derx1 = self.bsplx.derivative(1)
         self.dery1 = self.bsply.derivative(1)
         self.derx2 = self.bsplx.derivative(2)
@@ -60,14 +57,27 @@ class bspline:
         for i in range(self.sample_nb):
             self.sample_values[i] = self.estimate(self.sample_t[i])
 
+        #self.plot_curve(True)
+        #plt.show()
+
+    def estimate_with_basis(self,tk):
+        tk = self.modulo_tk(tk)  
+        b = self.get_basis(tk)
+        pt = np.array([0.0,0.0])
+        for i in range(self.n_c_periodic):
+            pt[0] += b[i]*self.c_periodic[0][i]
+            pt[1] += b[i]*self.c_periodic[1][i]
+        return pt
+
     def get_basis(self,tk):
         tk = self.modulo_tk(tk)
-        b_term = np.zeros(self.n_c)
-        for i in range(self.n_c):
-            if not np.isnan(self.basis[i](tk)):
-                b_term[i] += self.basis[i](tk)
-            if not np.isnan(self.basis[i](tk+self.t_max)):
-                b_term[i] += self.basis[i](tk+self.t_max)
+        b_term = np.zeros(self.n_c_periodic)
+        for i in range(self.n_c_periodic):
+            tmp = self.basis[i](tk)
+            if not np.isnan(tmp):
+                b_term[i] = tmp
+            else:
+                b_term[i] = 0
         return b_term
 
     def modulo_tk(self,tk):
@@ -76,15 +86,6 @@ class bspline:
     def estimate(self,tk):
         tk = self.modulo_tk(tk)        
         return np.array([self.bsplx(tk),self.bsply(tk)])
-
-    def estimate_with_basis(self,tk):
-        tk = self.modulo_tk(tk)  
-        b = self.get_basis(tk)
-        pt = np.array([0.0,0.0])
-        for i in range(self.n_c):
-            pt[0] += b[i]*self.c[0][i]
-            pt[1] += b[i]*self.c[1][i]
-        return pt
 
     def derivative1(self,tk):
         tk = self.modulo_tk(tk)
@@ -147,7 +148,11 @@ def init_SDM(points):
     P = np.zeros((n,2))
     for i in range(n):
         P[i] = [origin[0]+(np.cos(amid[i])*mean_sect[i]),origin[1]+(np.sin(amid[i])*mean_sect[i])]
-    return P
+
+    C = splprep([P[:,0], P[:,1]])[0][1]
+    C = np.transpose(C)
+    
+    return C
 
 def find_tk_foot_point(bspl,point):
     closest_index = distance.cdist([point], bspl.sample_values).argmin()
@@ -446,7 +451,7 @@ def iter_SDM(points,bspl):
         D = solve(fsd,const)
 
         # Update spline
-        P = move_ctrl_points(bspl,bspl.c,0.5*D,zeros)
+        P = move_ctrl_points(bspl,bspl.c,0.2*D,zeros)
         bspl.update()
         #bspl.plot_curve()
         #plt.show()
