@@ -5,12 +5,12 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
-from scipy.interpolate import BSpline, splprep
+from scipy.interpolate import BSpline, splprep,splev
 from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS = 15
+NB_OF_CTRL_POINTS = 10
 ORDER = 3
 NB_POINTS_BSPL = 50*NB_OF_CTRL_POINTS
 APPROXIMATION_ERROR_TRESHOLD = 1.0
@@ -39,9 +39,6 @@ class bspline:
         
         for i in range(self.n_c_periodic):
             self.basis.append(BSpline.basis_element(self.t[i:i+ORDER+2],False))
-        # Rearrange the basis element because the i-th basis element defines the curve at the i-th+ORDER ctrl point
-        #for i in range(self.n_c-ORDER+1):
-        #    self.basis.append(self.basis.pop(0))
         
         self.bsplx = BSpline(self.t,x,ORDER,False)
         self.bsply = BSpline(self.t,y,ORDER,False)
@@ -57,7 +54,7 @@ class bspline:
         for i in range(self.sample_nb):
             self.sample_values[i] = self.estimate(self.sample_t[i])
 
-        #self.plot_curve(True)
+        #self.plot_curve()
         #plt.show()
 
     def estimate_with_basis(self,tk):
@@ -103,10 +100,10 @@ class bspline:
         for i in range(self.sample_nb):
             pt[i] = self.estimate(u[i])
             #pt2[i] = self.estimate_with_basis(u[i])
-        plt.plot(pt[:,0],pt[:,1],ms=3.5)
+        plt.plot(pt[:,0],pt[:,1],'b',linewidth=2)
         #plt.plot(pt2[:,0],pt2[:,1],'.r')
         if plot_ctrl_pts:
-            plt.plot(self.c[0],self.c[1],'g')
+            plt.plot(self.c[0],self.c[1],'g',linewidth=2)
             
 
 def init_SDM(points):
@@ -149,8 +146,19 @@ def init_SDM(points):
     for i in range(n):
         P[i] = [origin[0]+(np.cos(amid[i])*mean_sect[i]),origin[1]+(np.sin(amid[i])*mean_sect[i])]
 
-    C = splprep([P[:,0], P[:,1]])[0][1]
+    plt.figure(utility.figMerge)
+    a = np.linspace(0,2*np.pi,300)
+
+    # Circle plotting
+    #plt.plot(origin[0]+radius*np.cos(a), origin[1]+radius*np.sin(a), '-r',linewidth=2)
+    #plt.plot(P[:,0], P[:,1],'-m',linewidth=2)
+
+    Px_per = np.append(P[:,0],P[:1,0])
+    Py_per = np.append(P[:,1],P[:1,1])
+    tck,u = splprep([Px_per, Py_per],per=True)
+    C = tck[1]
     C = np.transpose(C)
+    C = C[:-ORDER]
     
     return C
 
@@ -471,7 +479,7 @@ def SDM_algorithm(points):
     try:
         bspl, error = iter_SDM(points,bspl)
     except:
-        cust_print("An error occured")
+        cust_print("An error occured while reonstructing the contour!")
     bspl.plot_curve(False)
     return bspl, error
 
