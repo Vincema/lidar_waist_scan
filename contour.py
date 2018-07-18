@@ -14,7 +14,7 @@ NB_OF_CTRL_POINTS = 10
 ORDER = 3
 NB_POINTS_BSPL = 50*NB_OF_CTRL_POINTS
 APPROXIMATION_ERROR_TRESHOLD = 1.0
-ITER_MAX = 10
+ITER_MAX = 20
 REGUL_WEIGHT = 0.001
 
 
@@ -54,7 +54,7 @@ class bspline:
         for i in range(self.sample_nb):
             self.sample_values[i] = self.estimate(self.sample_t[i])
 
-        #self.plot_curve()
+        #self.plot_curve(True)
         #plt.show()
 
     def estimate_with_basis(self,tk):
@@ -73,8 +73,6 @@ class bspline:
             tmp = self.basis[i](tk)
             if not np.isnan(tmp):
                 b_term[i] = tmp
-            else:
-                b_term[i] = 0
         return b_term
 
     def modulo_tk(self,tk):
@@ -146,16 +144,15 @@ def init_SDM(points):
     for i in range(n):
         P[i] = [origin[0]+(np.cos(amid[i])*mean_sect[i]),origin[1]+(np.sin(amid[i])*mean_sect[i])]
 
-    plt.figure(utility.figMerge)
-    a = np.linspace(0,2*np.pi,300)
-
     # Circle plotting
+    #plt.figure(utility.figMerge)
+    #a = np.linspace(0,2*np.pi,300)
     #plt.plot(origin[0]+radius*np.cos(a), origin[1]+radius*np.sin(a), '-r',linewidth=2)
     #plt.plot(P[:,0], P[:,1],'-m',linewidth=2)
 
-    Px_per = np.append(P[:,0],P[:1,0])
-    Py_per = np.append(P[:,1],P[:1,1])
-    tck,u = splprep([Px_per, Py_per],per=True)
+    Px_per = np.append(P[:,0],P[0,0])
+    Py_per = np.append(P[:,1],P[0,1])
+    tck,u = splprep([Px_per, Py_per],s=0,k=ORDER,per=True)
     C = tck[1]
     C = np.transpose(C)
     C = C[:-ORDER]
@@ -166,7 +163,8 @@ def find_tk_foot_point(bspl,point):
     closest_index = distance.cdist([point], bspl.sample_values).argmin()
     tk = bspl.sample_t[closest_index]
     return tk
-   
+
+    """
     iter_max = 100
     iter_nb = 0
     epsi_deri = 1*10**(-6)
@@ -191,6 +189,7 @@ def find_tk_foot_point(bspl,point):
         else:
             a = m
     return bspl.modulo_tk(tk)
+    """
 
 def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
     esd = np.zeros((2*bspl.n_c,2*bspl.n_c))
@@ -200,7 +199,9 @@ def squared_dist(dist,rad,Ta_tk,No_tk,tk,neigh,bspl,points):
     bi_bj = np.zeros((n,n))
     for k in range(len(points)):
         # Basis elements
-        b_terms = bspl.get_basis(tk[k])
+        tmp_b_terms = bspl.get_basis(tk[k])
+        tmp_b_terms[:ORDER] += tmp_b_terms[-ORDER:]
+        b_terms = tmp_b_terms[:-ORDER]
 
         # SDM
         if dist[k] >= 0 and dist[k] < rad[k]:
@@ -459,7 +460,7 @@ def iter_SDM(points,bspl):
         D = solve(fsd,const)
 
         # Update spline
-        P = move_ctrl_points(bspl,bspl.c,0.2*D,zeros)
+        P = move_ctrl_points(bspl,bspl.c,1*D,zeros)
         bspl.update()
         #bspl.plot_curve()
         #plt.show()
@@ -479,8 +480,8 @@ def SDM_algorithm(points):
     try:
         bspl, error = iter_SDM(points,bspl)
     except:
-        cust_print("An error occured while reonstructing the contour!")
-    bspl.plot_curve(False)
+        cust_print("An error occured while reconstructing the contour!")
+    bspl.plot_curve()
     return bspl, error
 
 def compute_circumference(bspl):

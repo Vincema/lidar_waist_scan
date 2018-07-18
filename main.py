@@ -105,7 +105,7 @@ def compute_algo_circumference():
     lidarsSet.compute_raw_datas()
 
     # Remove outliers
-    if len(utility.mergedPointsXY) > 0:
+    if len(utility.mergedPointsXY) > constants.min_points:
         #utility.remove_outliers()
         
         # Compute contour
@@ -119,7 +119,7 @@ def compute_algo_circumference():
             plt.show(block=True)
 
     else:
-        cust_print('    No data point has been read in the expected area!')
+        cust_print('    Not enough data point have been read in the expected area!')
 
 # Ignore warnings
 warnings.simplefilter("ignore")

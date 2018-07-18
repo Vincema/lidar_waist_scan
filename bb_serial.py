@@ -29,8 +29,8 @@ class bitbang_serial:
         self.write_line_bb_serial('')
         self.write_line_bb_serial('')
         while True:
-            self.write_line_bb_serial('Press \'c\' to connect serial.', False)
             self.write_line_bb_serial('\r', False)
+            self.write_line_bb_serial('Press \'c\' to connect serial... ', False)
             time.sleep(0.1)
             (count, input_bytes) = self.read_bb_serial()
             for i in range(count):

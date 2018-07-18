@@ -18,11 +18,11 @@ def compute_angle_array_for_scan(height):
         meas_nb.append(constants.nbOfDatasToRetrieve)
         return [angle_array,meas_nb]
     
-    hgt_diff_mtop = constants.lidarsHeight - (height + constants.margin_top_meas)
-    hgt_diff_mbot = constants.lidarsHeight - (height - constants.margin_bot_meas)
+    hgt_diff_mtop = (height + constants.margin_top_meas) - constants.lidarsHeight
+    hgt_diff_mbot = (height - constants.margin_bot_meas) - constants.lidarsHeight
     
     min_meas_dist = constants.deadZone
-    max_meas_dist = 2*(constants.lidarsDist-constants.deadZone) + constants.deadZone
+    max_meas_dist = constants.lidarsDist #2*(constants.lidarsDist-constants.deadZone) + constants.deadZone
     
     if height > constants.lidarsHeight:
         hgt1 = hgt_diff_mbot
@@ -39,10 +39,6 @@ def compute_angle_array_for_scan(height):
         currentDist += (dist2-dist1)
         angle_array.append(angle*180/math.pi)
         meas_nb.append(constants.nbOfDatasToRetrieve)
-        #if dist2 > max_meas_dist:
-        #    meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (max_meas_dist-dist1) / (max_meas_dist-min_meas_dist)))
-        #else:
-        #    meas_nb.append(math.ceil(constants.nbOfDatasToRetrieve * (dist2-dist1) / (max_meas_dist-min_meas_dist)))
     return [angle_array,meas_nb]
     
 
@@ -99,7 +95,7 @@ class driverLidars:
         self.areConnected = 0
 
     def servos_goto(self,servosID,position):   
-        self.serial_connection.goto(servosID,-position,degrees=True)
+        self.serial_connection.goto(servosID,position,degrees=True)
 
     def check_link_state(self):
         for lidarNb in range(constants.nb_of_lidars):
@@ -161,15 +157,15 @@ class driverLidars:
                 self.disconnect()
                 return -1
             try:
-                iterMeas.append(self.lidars[lidarNb].iter_measures())
+                iterMeas.append(self.lidars[lidarNb].iter_measures(max_buf_meas=10000))
             except:
                 cust_print('    Cannot communicate with lidar' + str(lidarNb+1) + '!')
                 return -1 
             datasLeft.append(constants.nbOfDatasToRetrieve)
             done.append(False)
-            
+   
         try:  
-            while False in done:
+            while not True in done:
                 for lidarNb in range(constants.nb_of_lidars):
                     if done[lidarNb] == False:
                         datas = next(iterMeas[lidarNb])
@@ -177,7 +173,7 @@ class driverLidars:
                         dist = datas[3]
                         # First selection of points 
                         if angle >= -90 and angle <= +90 and dist > 0:
-                            file[lidarNb].write(str(angle) + ' ' + str(-current_angle_z) + ' ' + str(dist) + '\n')
+                            file[lidarNb].write(str(angle) + ' ' + str(current_angle_z) + ' ' + str(dist) + '\n')
                             datasLeft[lidarNb] -= 1
                             if datasLeft[lidarNb] < 1:
                                 done[lidarNb] = True
