@@ -100,6 +100,7 @@ class driverLidars:
     def check_link_state(self):
         for lidarNb in range(constants.nb_of_lidars):
             try:
+                self.lidars[lidarNb].stop()
                 self.lidars[lidarNb].get_health()  
             except:
                 cust_print('Link error with lidar' + str(lidarNb+1))
@@ -165,14 +166,14 @@ class driverLidars:
             done.append(False)
    
         try:  
-            while not True in done:
+            while False in done:
                 for lidarNb in range(constants.nb_of_lidars):
                     if done[lidarNb] == False:
                         datas = next(iterMeas[lidarNb])
                         angle = -1*((datas[2]+constants.offset_angle_lidar+180.0)%360 - 180.0)
                         dist = datas[3]
                         # First selection of points 
-                        if angle >= -90 and angle <= +90 and dist > 0:
+                        if angle >= -30 and angle <= +30 and dist > 0:
                             file[lidarNb].write(str(angle) + ' ' + str(current_angle_z) + ' ' + str(dist) + '\n')
                             datasLeft[lidarNb] -= 1
                             if datasLeft[lidarNb] < 1:
@@ -199,6 +200,7 @@ class driverLidars:
         # Get height from stature
         lin_coeffs_navel_height = [0.66410011, -105.89395578]
         height = (stature*10)*lin_coeffs_navel_height[0] + lin_coeffs_navel_height[1]
+        cust_print("    Target: " + str(int(height/10)) + "cm")
 
         self.start_motors()
         

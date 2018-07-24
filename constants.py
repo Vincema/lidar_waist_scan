@@ -3,7 +3,7 @@ import os
 
 #### DEBUG ####
 # Number of lidars that should be connected
-nb_of_lidars = 2
+nb_of_lidars = 3
 use_bb_serial = False
 disp_charts = True
 
@@ -15,16 +15,16 @@ lidarsAngle = [11*180/6,
                3*180/6]
 
 # Distance of lidars from center
-lidarsDist = 540
+lidarsDist = 548
 
 # Size of an edge of the equi triangle
 edgeLen = 3*lidarsDist/math.sqrt(3)
 
 # Distance lidar from vertical rotation axis (servo)
-lidarsDistFromRotAxis = 25
+lidarsDistFromRotAxis = 55
 
 # Height of lidars from the base
-lidarsHeight = 900
+lidarsHeight = 890
 
 # Size of the zone from the lidar where measurement can't be performed (mm)
 deadZone = 200
@@ -36,18 +36,18 @@ boundsDatasLidars = [-600,
                      600]
 
 # Nb of datas to retrieve for each lidar for each angle
-nbOfDatasToRetrieve = 500
+nbOfDatasToRetrieve = 100
 
 # Offset angle lidars
 offset_angle_lidar = 0
 
 # Serial port for Lidars
-serialPort = ['/dev/ttyUSB1',
-              '/dev/ttyUSB0',
+serialPort = ['/dev/ttyUSB0',
+              '/dev/ttyUSB1',
               '/dev/ttyUSB2']
 
 # Speed of servos (0-254)
-servosSpeed = 30
+servosSpeed = 25
 
 # Servos IDs
 servosIDs = [1,2,3]
@@ -56,10 +56,10 @@ servosIDs = [1,2,3]
 min_points = 25
 
 # Heights margin for scanning (arround the patient's height)
-margin_top_meas = 10
-margin_bot_meas = 10
-margin_top = 10
-margin_bot = 10
+margin_top_meas = 20
+margin_bot_meas = 20
+margin_top = 20
+margin_bot = 20
 
 # Bitbang serial
 bb_serial_RX = 27

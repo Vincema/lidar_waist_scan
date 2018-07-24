@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
+ax = []
 
 class lidarInfos:
     def __init__(self,distCenter,angle,height):
@@ -81,6 +82,7 @@ class setOfLidars:
     
     def plot_raw_datas(self):
         fig = plt.figure(utility.figRaw)
+        global ax
         ax = fig.add_subplot(111, projection='3d')
         
         ax.set_xlabel('x position (mm)')
@@ -135,7 +137,7 @@ class setOfLidars:
         for i in range(len(utility.mergedPointsXY)):
             mergedPointsX.append(utility.mergedPointsXY[i].x)
             mergedPointsY.append(utility.mergedPointsXY[i].y)
-        plt.plot(mergedPointsX,mergedPointsY,'k.',label='Raw datas',ms=2.5)
+        plt.plot(mergedPointsX,mergedPointsY,'k.',label='Raw datas',ms=3)
         plt.gca().set_aspect('equal', adjustable='box')
         plt.axis(constants.boundsDatasLidars)
 
@@ -154,11 +156,16 @@ class setOfLidars:
                 if utility.is_useful_data(utility.point(self.lidarsSet[i].pointData[j].x,self.lidarsSet[i].pointData[j].y,self.lidarsSet[i].pointData[j].z)):
                     x.append(self.lidarsSet[i].pointData[j].x)
                     y.append(self.lidarsSet[i].pointData[j].y)
+                    #ax.scatter(self.lidarsSet[i].pointData[j].x,self.lidarsSet[i].pointData[j].y,self.lidarsSet[i].pointData[j].z,c='r')
                     # Remove duplicates
                     #if temp_x not in x or temp_y not in y:
                     #    x.append(self.lidarsSet[i].pointData[j].x)
                     #    y.append(self.lidarsSet[i].pointData[j].y)
-                    
+
+        #ax.set_xbound(constants.boundsDatasLidars[0],constants.boundsDatasLidars[1])
+        #ax.set_ybound(constants.boundsDatasLidars[2],constants.boundsDatasLidars[3])
+        #ax.set_zbound(0,constants.lidarsHeight*2)
+        
         for i in range(len(x)):           
             utility.mergedPointsXY.append(utility.point(x[i],y[i]))
 
