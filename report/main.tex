@@ -56,7 +56,7 @@ In the context of a research of innovative medical processes, it has been found 
 
 \vsp
 
-This internal report cover the technical aspects that have been implemented during this project. Moreover, as it takes part of an internship, you will find in Vincent Maire's report \cite{MAIRE_internship_report} the detail of the solutions considered but not kept.  
+This internal report cover the technical aspects that have been implemented during this project. Moreover, as it takes part of an internship, you will find in Vincent Maire's report \cite{MAIRE_internship_report} the details of the solutions considered but not kept.  
 
 \vsp
 
@@ -104,7 +104,7 @@ To be able to aim at the user's navel (the level at which the measurement should
 
 \vsp
 
-Then, a micro-controller control the actuators and sensors, compute the circumference and send the result to an interface. 
+Then, a micro-controller controls the actuators and sensors, compute the circumference and send the result to an interface. 
 
 \subsection{Specifications}
 
@@ -120,14 +120,14 @@ The system must be:
 Considering the mechanic part built-up and functional, the list above explains the tasks that should be done to make the system able to work properly: 
 \begin{itemize}
     \item Controlling 3 servomotors and 3 LIDARs with a raspberry Pi, making them working together
-    \item Study how to find the user's belly level
-    \item Implementing the algorithm for user's circumference measurement from a point cloud
-    \item Integrating the work in a program to control the machine and send the result to a computer via a serial com.
+    \item Study how to find the user navel's height
+    \item Implementing the algorithm for user circumference measurement from a point cloud
+    \item Integrating the work in a program to control the machine and send the result to a computer via a serial communication
 \end{itemize}
 
 \section{Hardware implementation}
 
-This project uses a Raspberry Pi v3, 3 RpLidar AX1, 3 and AX12 servomotors as described on the figure \ref{fig:basic_architecture}.
+This project uses a Raspberry Pi v3, 3 RpLidar A1, and 3 AX12 servomotors as described on the figure \ref{fig:basic_architecture}.
 
 \begin{figure}[H]
     \centering
@@ -162,11 +162,11 @@ The program is integrally written in Python 3.6.
 
 \subsection{LIDARs}
 
-The open source library: \url{https://github.com/Roboticia/RPLidar} is used to control the LIDARs. While scanning, the 3 LIDARs gather the data alternately. They just need to be plugged to the raspberry pi in via USB.
+The open source library: \url{https://github.com/Roboticia/RPLidar} is used to control the LIDARs. While scanning, the 3 LIDARs gather the data alternately. They just need to be plugged to the Raspberry via USB.
 
 \subsection{Servomotors}
 
-The project uses the following open source library to control the servomotors:\url{https://pypi.org/project/pyax12/}. 
+The project uses the following open source library to control the servomotors: \url{https://pypi.org/project/pyax12/}. 
 
 \vsp
 
@@ -187,7 +187,7 @@ Here, a 74LS240 tri-state buffer is used. It allows to control the direction of 
 To control the servomotors, few details need to be known:
 \begin{itemize}
     \item The ideal baudrate is 57600
-    \item Each servo as an ID and they must all be different
+    \item Each servo has an ID and they must all be different
     \item When they all run at the same time, an high current drain can occur. Thus, without a powerful generator and high value capacitance, the speed should be set slow.
 \end{itemize}
 
@@ -196,7 +196,7 @@ To configure the servomotors, a script is available in the source. It allows to 
 
 \section{Body scan}
 
-The following section describes the procedure to scan a level of the body. For now we don't need to detect the navel, we just need to know where to scan at.
+The following section describes how to find the navel's height of the user and the procedure to scan a specific level of the body.
 
 \subsection{Notations and physical quantities} \label{sec:notations}
 
@@ -217,19 +217,19 @@ $$
 \end{bmatrix}
 =
 \begin{bmatrix}
-    \cfrac{ \pi}{6} &
-    \cfrac{5\pi}{6} & 
-    \cfrac{9\pi}{6} 
+    \cfrac{- \pi}{6} &
+    \cfrac{-5\pi}{6} & 
+    \cfrac{-9\pi}{6} 
 \end{bmatrix}
 $$
 
 \vsp
 
-Each lidar has its own local frame represented in \textcolor{yellow}{gold}, and $\alpha$ is the angle between the $Y$ vector of the local frame (oriented to the middle of the circle) and the measured laser beam. $m$ is the distance of the between the laser beam source and the impact.
+Each lidar has its own local frame represented in \textcolor{yellow}{gold}, and $\alpha$ is the angle between the $Y$ vector of the local frame (oriented to the middle of the circle) and the measured laser beam. $m$ is the distance between the laser beam source and the impact.
 
 \vsp
 
-The red zone inside the circle is a non-measurable area. Indeed, the lidars need a minimum distance to be able to perform a measurement. Moreover, the more this red zone is large, the wider the range of reachable scan heights. $d$ is the radius of the dead zone.
+The red zone inside the circle is a non-measurable area. Indeed, the lidars need a minimum distance to be able to perform a measurement. Moreover, the more this red zone is large, the wider the range of reachable scan heights. $d$ is the radius of the non-measurable area.
 
 \vsp
 
@@ -327,7 +327,7 @@ Two different approach could be used to find the height of the user's navel: sca
 
 \subsubsection{Detecting the navel's height}
 
-Before implementing the detection, we need to know whether the degree of accuracy of our sensors and actuators. First, the datasheets of the LIDARs and servomotors give:
+Before implementing the detection, we need to know the degree of accuracy of our sensors and actuators. First, the datasheets of the LIDARs and servomotors give:
 
 \begin{itemize}
     \item Servomotors' resolution: $\frac{330}{1024}^\circ = 0.322^\circ$
@@ -345,24 +345,24 @@ We choose to divide the half of the angular resolution by $\sqrt{3}$ as the meas
 
 \vsp
 
-Let $v=[d,0]$ be the measured vector in 2D space with $d$ the measured distance by the LIDAR, the uncertainty of position $u_p$ is given by:
+Let $v=[m,0]$ be the measured vector in 2D space with $m$ the measured distance by the LIDAR, the uncertainty of position $u_p$ is given by:
 
 \begin{equation}
-        u_p = \sqrt{\big[ d - d.cos(u) \big] ^2 + \big[ -d.sin(u) \big] ^2}
+        u_p = \sqrt{\big[ m - m.cos(u) \big] ^2 + \big[ -m.sin(u) \big] ^2}
 \end{equation}
 
-Then, the expanded uncertainty $U_p = k.u_p$ with $k$ the coverage factor. $k=1.96$ for a level of confidence of 95\%. Assuming for example, that the user is 500mm away from the LIDAR ($d=500$), then $U_p=5.0mm$. Simulation have been made and are shown on the figure \ref{fig:sim_navel_detection}. 
+Then, the expanded uncertainty $U_p = k.u_p$ with $k$ the coverage factor. $k=1.96$ for a level of confidence of 95\%. Assuming for example, that the user is 500mm away from the LIDAR ($m=500$), then $U_p=5.0mm$. Simulation have been made and are shown on the figure \ref{fig:sim_navel_detection}. 
 
 \begin{figure}[H]
     \centering
     \subfloat[Favourable conditions (width=10mm, depth=10mm, 150 data points)] {
         \label{fig:sim_navel_detection_favourable_case}
-        \includegraphics[width=8cm]{images/navel/detection/favourable_case.png}
+        \includegraphics[width=10cm]{images/navel/detection/favourable_case.png}
         }
         \\
     \subfloat[Bad conditions (width=5mm, depth=5mm, 30 data points)] {
         \label{fig:sim_navel_detection_worse_case}
-        \includegraphics[width=8cm]{images/navel/detection/worse_case.png}
+        \includegraphics[width=10cm]{images/navel/detection/worse_case.png}
         } 
     \caption{Simulations of the user's navel detection}
     \label{fig:sim_navel_detection}
@@ -371,10 +371,10 @@ Then, the expanded uncertainty $U_p = k.u_p$ with $k$ the coverage factor. $k=1.
 The main problems with detecting the users' navel are cited below:
 
 \begin{itemize}
-    \item The characteristics of each nave are highly different for each person
+    \item The characteristics of each navel are highly different for each person
     \item If the navel is too small or not depth enough, the data become too noisy
     \item It required a lot of time to scan a part of the body with LIDAR
-    \item If the patient is short or tall compare to the pole, then the navel is not aligned with horizontally with the LIDAR
+    \item If the patient is short or tall compared to the pole, then the navel is not aligned horizontally with the LIDAR
     \item It can cause some user inconvenience because he must not move at all and must not inflate his waist while breathing during the detection
 \end{itemize}
 
@@ -382,7 +382,7 @@ For these reasons, the detection algorithm has not been implemented
 
 \subsubsection{Estimating the navel's height}
 
-A estimation of the navel's height was tried, based on other anthropomorphic parameters such as stature, weight and age. Two open databases have been used: one for children from the \textit{United States Consumer Product Safety Commission} \cite{database_cpsc_children} and another from the \textit{United States Army} for adults \cite{database_ansur2}. They both gathered data from both genders. 
+A estimation of the navel's height was tried, based on other anthropomorphic parameters such as stature, weight and age. Two open databases have been used: one for children from the \textit{United States Consumer Product Safety Commission} \cite{database_cpsc_children} and another from the \textit{United States Army} \cite{database_ansur2} for adults. They both gathered data from both genders. 
 
 \vsp
 
@@ -402,7 +402,7 @@ The figure \ref{fig:estimation_navel_various_parameters} shows the thousands of 
         \label{fig:estimation_navel_depending_age}
         \includegraphics[width=8cm]{images/navel/estimation/navel_age.png}
         } 
-    \caption{Patient's navel height depending on their stature, weight and age.}
+    \caption{Patient navel's height depending on their stature, weight and age.}
     \label{fig:estimation_navel_various_parameters}
 \end{figure}
 
@@ -439,7 +439,7 @@ As the 4 variables are all pretty well dependant to each other, a multi-layered 
 By splitting the set of data into two groups, we can use a first part to train the regression while the other part is used to test the regression. 
 \vsp
 
-The error in $\epsilon_\%$ of the estimated navel's height for each test data is computed as follow:
+The error $\epsilon_\%$ of the estimated navel's height for each test data is computed as follow:
 
 \begin{equation}
     \epsilon_\% = \cfrac{\abs{\text{estimated - true}}}{\text{stature}}.100
@@ -485,7 +485,7 @@ All the results are presented in the table \ref{tab:results_error_estimated_nave
     \label{tab:results_error_estimated_navel}
 \end{table}
 
-Note that the database used are not sampling a good representation of the population (soldiers and American children). Some other set of data more adapted to global population may be found. 
+Note that the databases used are not sampling a good representation of the population (soldiers and American children). Some other sets of data more adapted to global population may be found. 
 
 \subsection{Running a scan}
 
@@ -495,7 +495,7 @@ $$
     \alpha_{j} & \theta_{j} & m_{j} 
 \end{bmatrix}_i
 $$
-with $i$ number of LIDARs and $j$ number of measurements. Another file contains the scan's information (for now, only the height $\Tilde{h}$) 
+with $i$ number of LIDARs and $j$ number of measurements. Another file contains the scan's information (for now, only the height $\Tilde{h}$). 
 
 
 \subsection{Raw data to point cloud}
@@ -511,7 +511,7 @@ Each measurement is a 3D vector, having the LIDAR as origin. Let's find the orie
 
 \vsp
 
-Now we want to rotate it with the rotation matrix given in \cite{rot_mat_euler}. The elemental rotation matrices around the axis X and Z can be expressed as follow:
+Now we want to rotate it with the rotation matrix given in the Slabaugh's article \cite{rot_mat_euler}. The elemental rotation matrices around the axis X and Z can be expressed as follow:
 
 \begin{equation}
 \label{eq:rot_mat_x}
@@ -533,7 +533,7 @@ Now we want to rotate it with the rotation matrix given in \cite{rot_mat_euler}.
     \end{bmatrix}
 \end{equation}
 
-Moreover, we need to get the final vector in the system's frame. To transform the LIDAR's frame into the system's frame, we will rotate the around Z-axis by $+90^\circ$ (to match the X and Y axis) and then rotate it again around the Z-axis by the value of its position angle $\beta_i$. 
+Moreover, we need to get the final vector in the system's frame. To transform the LIDAR's frame into the system's frame, we will rotate the around Z-axis by $+90^\circ$ (to match the X and Y axis), then rotate it around the X-axis by an angle $\Theta$ and rotate it again around the Z-axis by the value of its position angle $\beta_i$. 
 
 \vsp
 
@@ -675,7 +675,7 @@ We assume that the number of control points and the order of the spline will sta
 
 \vsp
 
-The first step is to find a good initial B-spline curve which fits with the data, since this method is highly dependent to the initial conditions.
+The first step requires to find a good initial B-spline curve which fits with the data, since this method is highly dependent to the initial conditions.
 
 \vsp
 
@@ -710,7 +710,7 @@ The process can be iterated until a user custom error term is below a threshold 
 
 \subsection{Implementation}
 
-This section describes how this method has been implemented for our system, what could be improved.
+This section describes how this method has been implemented for our system.
 
 \subsubsection{B-spline computing}
 
@@ -739,7 +739,7 @@ To compute a B-spline, \textbf{scipy.interpolate.BSpline} is called twice, in or
 
 \vsp
 
-Then, to be make the B-spline periodic as we want to reconstruct a closed shape, it is necessary to append the $n$ first knot values and coefficients to the B-spline knot values and coefficient. That way, the B-spline will repeat its last values as if it was closed.
+Then, to make the B-spline periodic as we want to reconstruct a closed shape, it is necessary to append the $n$ first knot values and coefficients to the B-spline knot values and coefficient. That way, the B-spline will repeat its last values as if it was closed.
 
 \subsubsection{Finding the initial spline}
 
@@ -793,7 +793,7 @@ With $x_j$ and $y_j$ the coordinates of the j-th point, $a_M$ and $b_M$ the posi
 
 \vsp
 
-Now that we have a circle that barely fits with the point cloud, we split it into $N_ctrl$, the number of control points of the B-spline, equal sections as shown in the figure \ref{fig:split_circle}. Let's assume moreover that it creates areas with infinite size as they grow even outside the circle.
+Now that we have a circle that barely fits with the point cloud, we split it into $n$ areas, the number of control points of the B-spline, equal sections as shown in the figure \ref{fig:split_circle}. Let's assume moreover that it creates areas with infinite size as they grow even outside the circle.
 
 \begin{figure}[H]
     \centering
@@ -806,7 +806,7 @@ Then, the median of the distance of the points to the center is computed for eac
 
 \vsp
 
-In the case an area does not include any points, then we compute the average of the median of the two surrounding zones. If the surrounding zone do not include any points too, a linear interpolation is made between the two closest zone that contain points. 
+In the case an area does not include any points, then we compute the average of the median of the two surrounding zones. If the surrounding zones do not include any points too, a linear interpolation is made between the two closest zone that contain points. 
 
 \vsp
 
@@ -830,7 +830,7 @@ This method brought good results and becomes even more accurate when the number 
         \label{fig:bsp_res_init_n20}
         \includegraphics[width=5cm]{images/bsp_res/init/20n.png}
         } 
-    \caption[Initial B-spline results]{Initial B-spline results. In \textcolor{red}{red}, the fitted circle, in \textcolor{magenta}{magenta} the distance median for each area and in \textcolor{blue}{blue} the initial B-spline found.}
+    \caption[Initial B-spline results]{Initial B-spline results} {In \textcolor{red}{red}, the fitted circle, in \textcolor{magenta}{magenta} the distance median for each area and in \textcolor{blue}{blue} the initial B-spline found.}
     \label{fig:initial_fit_results}
 \end{figure}
 
@@ -969,7 +969,7 @@ In the same way as the equation \ref{eq:derivative_esd_x_d_greater_0}, we can fi
     + 2\beta_i(t_k)N_{k,y} [(P(t_k)-X_k)^T N_k]
 \end{equation}
 
-Now, when $d < 0$, the error term is very similar as it is the sum of the error term when $0 \leq d$ and itself when $N$ is replaced by $T$ times $\cfrac{d}{d-\rho}$. Thus, when $d < 0$, we have:
+Now, when $d < 0$, the error term is very similar as it is the sum of the error term when $0 \leq d$ and itself when $N$ is replaced by $T$ and multiply $\cfrac{d}{d-\rho}$. Thus, when $d < 0$, we have:
 
 \begin{equation}
 \label{eq:derivative_esd_d_lower_0}
@@ -1035,7 +1035,7 @@ From the equations \ref{eq:derivative_esd_x_d_greater_0}, \ref{eq:derivative_esd
     \centering
     \begin{tabular}{|l|p{6cm}|p{6cm}|}
         \hline
-        $d > 0$
+        $d < 0$
         &
         \textbf{Derivative by $D_{i,x}$}
         &
@@ -1089,8 +1089,6 @@ We can now consider the regularization term. It is used to smooth the curve. The
 
 However, these functions are computationally very expensive. A simpler regularization term could be to align each control point with its closest neighbors. This equals to minimize the distance between each control points and the middle $m_i$ of the segment which links its two closest neighbors.
 
-\vsp
-
 \begin{equation}
     f_s = \sum \limits_{i=0}^{n} \norm{m_i - P_+}^2
 \end{equation}
@@ -1114,7 +1112,7 @@ The norm is squared in $f_s$ in order to make it quadratic and to minimize it ea
 
 We can now add the coefficients found in the equation \ref{eq:reg_derivative} to the matrices $A$ and $b$ as follows:
 
-$$ A_{reg}[i][i] = 2,\ A_{reg}[i+n][i+n] = 2 $$
+$$ A_{reg}[i][i] = 2\lambda,\ A_{reg}[i+n][i+n] = 2\lambda $$
 $$ b_{reg}[i] = 2\lambda (P_{i,x} - m_{i,x}),\ b_{reg}[i+n] = 2\lambda (P_{i,y} - m_{i,y})$$
 
 The influence of the $\lambda$ value will be discussed later in the section \ref{sec:influence_lambda}. 
@@ -1144,7 +1142,7 @@ To counter this problem, we sum each line of the matrix $A$ and compare it to a 
 \end{figure}
 
 Then considering the $j^{th}$ line of the $A$ matrix which was too small, we now set the coefficients as follows:
-$$ A[j][j] = 1,\ A_[j][\neq j] = 0,\ A_[\neq j][j] = 0 $$
+$$ A[j][j] = 1,\ A[j][\neq j] = 0,\ A[\neq j][j] = 0 $$
 $$ b[j] = 0 $$
 
 \subsubsection{Stop conditions} \label{sec:stop_condition}
@@ -1186,7 +1184,7 @@ This section will describe the results of this method and some improvements that
 All along this section, we will try to fit a point cloud and varying:
 
 \begin{itemize}
-    \item The ration $\frac{n}{p}$ with $n$ the number of control points and $p$ the number of point in the cloud
+    \item The ratio $\frac{n}{p}$ with $n$ the number of control points and $p$ the number of point in the cloud
     \item The pondering factor $\lambda$ of the regularization term
     \item The sharpness of the point cloud
 \end{itemize}
@@ -1250,7 +1248,7 @@ Tests with several regularization coefficient's value are shown in figure \ref{f
         \label{fig:bsp_res_lambda_10}
         \includegraphics[width=5cm]{images/bsp_res/lambda/10.png}
         } 
-    \caption[Influence of regularization coefficient's value on the curve]{Influence of regularization coefficient's value on the curve (n=15, p=200). The control points are shown in \textcolor{green}{green} while the curve is in \textcolor{blue}{blue}}
+    \caption[Influence of regularization coefficient's value on the curve]{Influence of regularization coefficient's value on the curve (n=15, p=200)} {The control points are shown in \textcolor{green}{green} while the curve is in \textcolor{blue}{blue}}
     \label{fig:bsp_res_lambda}
 \end{figure}
 
@@ -1312,7 +1310,7 @@ It appears also that sometime, the number of control points is not well adapted 
 
 \vsp
 
-Moreover, it could be a great idea to implement an improved outliers detection as the currently implemented one is not robust to an high outlying points.
+Moreover, it could be a great idea to implement an improved outliers detection as the currently implemented one is not robust to an high number of outlying points.
 
 \vsp
 
@@ -1325,7 +1323,7 @@ It is possible to run the whole program without accessing to the Raspi GUI's rem
 
 \subsection{User's manual}
 
-A serial bus is connected to the Raspi, and a USB-TTL converter allows the user to plug it to a computer. The program is run automatically at the Raspi's start-up and any terminal can be used to interact with it. Notice that the baudrate should be configured to 19200 and a constant should be set to \textit{True} to tell the Raspi to print and read on the serial. Finally, an other constant must be set to \textit{False} to avoid the Raspi showing the plot when using the serial.  
+A serial bus is connected to the Raspi, and a USB-TTL converter allows the user to plug it to a computer. The program is ran automatically at the Raspi's start-up and any terminal can be used to interact with it. Notice that the baudrate should be configured to 19200 and a constant should be set to \textit{True} to tell the Raspi to print and read on the serial. Finally, an other constant must be set to \textit{False} to avoid the Raspi showing the plot when using the serial.  
 
 \subsection{Implementation}
 
