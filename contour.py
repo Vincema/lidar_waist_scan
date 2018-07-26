@@ -10,7 +10,7 @@ from scipy.linalg import solve,lstsq
 from scipy.spatial import distance
 import time
 
-NB_OF_CTRL_POINTS = 20
+NB_OF_CTRL_POINTS = 10
 ORDER = 3
 NB_POINTS_BSPL = 50*NB_OF_CTRL_POINTS
 APPROXIMATION_ERROR_THRESHOLD = 1.0
@@ -102,7 +102,7 @@ class bspline:
         plt.plot(pt[:,0],pt[:,1],'b',linewidth=2)
         #plt.plot(pt2[:,0],pt2[:,1],'.r')
         if plot_ctrl_pts:
-            plt.plot(self.c[0],self.c[1],'g',linewidth=2)
+            plt.plot(np.append(self.c[0,:],self.c[0,0]),np.append(self.c[1,:],self.c[1,0]),'g',linewidth=2)
             
 
 def init_SDM(points):
@@ -110,7 +110,8 @@ def init_SDM(points):
 
     n = NB_OF_CTRL_POINTS
     n_sect = np.zeros(n,'int')
-    mean_sect = np.zeros(n)
+    d_sect = [np.array([])]*n
+    median_sect = np.zeros(n)
     amin = np.zeros(n)
     amid = np.zeros(n)
     amax = np.zeros(n)
@@ -123,11 +124,11 @@ def init_SDM(points):
         for j in range(n):
             if amin[j] <= angle and angle < amax[j]:
                 n_sect[j] += 1
-                mean_sect[j] += utility.euclidian_dist(points[i],origin)
+                d_sect[j] = np.append(d_sect[j],utility.euclidian_dist(points[i],origin))
 
     for i in range(n):
         if n_sect[i] > 0:
-            mean_sect[i] /= n_sect[i]
+            median_sect[i] = np.median(d_sect[i])
 
     for i in range(n):
         if n_sect[i] == 0:
@@ -139,11 +140,11 @@ def init_SDM(points):
             while n_sect[j] == 0:
                 j = (j+1)%n
             up = j
-            mean_sect[i] = (mean_sect[down] + mean_sect[up]) / 2.0
+            median_sect[i] = (median_sect[down] + median_sect[up]) / 2.0
 
     P = np.zeros((n,2))
     for i in range(n):
-        P[i] = [origin[0]+(np.cos(amid[i])*mean_sect[i]),origin[1]+(np.sin(amid[i])*mean_sect[i])]
+        P[i] = [origin[0]+(np.cos(amid[i])*median_sect[i]),origin[1]+(np.sin(amid[i])*median_sect[i])]
 
     # Circle plotting
     #plt.figure(utility.figMerge)
@@ -164,7 +165,6 @@ def init_SDM(points):
 def find_tk_foot_point(bspl,point):
     closest_index = distance.cdist([point], bspl.sample_values).argmin()
     tk = bspl.sample_t[closest_index]
-    #plt.plot([point[0],bspl.estimate(tk)[0]],[point[1],bspl.estimate(tk)[1]],'k')
     return tk
 
     """
@@ -384,7 +384,6 @@ def compute_regularization(bspl):
         reg[i+n][i+n] = 1
         const[i] = dx
         const[i+n] = dy
-
     return reg,const
 
 """
@@ -393,55 +392,15 @@ def compute_regularization(bspl):
     reg = np.zeros((2*n,2*n))
     return reg,const
 """
-"""
-    n = bspl.n_c
-    const = np.zeros(2*n)
-    reg = np.zeros((2*n,2*n))
-    k = ORDER
-    t = bspl.t
-    P_x = bspl.c[0]
-    P_y = bspl.c[1]
 
-    a = np.zeros(n)
-    c = np.zeros(n)
-    I = np.zeros((n,n))
-    for i in range(n):
-        a[i] = 1.0 / ((t[i+k]-t[i+2])*(t[i+k+1]-t[i+2]))
-        c[i] = 1.0 / ((t[i+k]-t[i+2])*(t[i+k]-t[i+1]))
-
-    nb_values_integ = 20 
-    integ_x = np.linspace(t[0],t[-1],nb_values_integ)
-    spacing = integ_x[1] - integ_x[0]
-    for i in range(n):
-        for j in range(n):
-            prev = 0.0
-            for m in integ_x:
-                b = bspl.get_basis(m)
-                temp = ( a[(i-2)%n]*b[(i-2)%n]*b[j]
-                         -(a[(i-1)%n]+c[(i-1)%n])*b[(i-1)%n]*b[j]
-                         +c[i]*b[i]*b[j] )
-                I[i][j] += (temp + prev) * spacing / 2.0
-                prev = temp
-  
-    temp1 = 2*((k-1)**2)*((k-2)**2)
-    for i in range(n):
-        temp2_x = 0
-        for j in range(n-3):
-            temp2_x += (a[j]*P_x[j+2]-(a[j]+c[j])*P_x[j+1]+c[j]*P_x[j])*I[i][j]
-        temp2_y = 0
-        for j in range(n-3):
-            temp2_y += (a[j]*P_y[j+2]-(a[j]+c[j])*P_y[j+1]+c[j]*P_y[j])*I[i][j]
-        const[i] -= temp1*temp2_x
-        const[i+n] -= temp1*temp2_y
-
-        temp3 = a[(j-2)%n]*I[i][(j-2)%n]-(a[(j-1)%n]+c[(j-1)%n])*I[i][(j-1)%n]+c[j]*I[i][j]
-        for j in range(n):
-            reg[i+0][j+0] = temp1*temp3
-            reg[i+0][j+n] = 0
-            reg[i+n][j+0] = 0
-            reg[i+n][j+n] = temp1*temp3
-    return reg,const
-"""
+# Return an array of indices of the non outlier points
+def get_non_outliers(dist):
+    non_outliers = np.array([],'int')
+    six_sig = 6 * np.std(np.abs(dist))
+    for i,d in enumerate(dist):
+        if np.abs(d) <= six_sig:
+            non_outliers = np.append(non_outliers, i)
+    return non_outliers  
 
     
 def iter_SDM(points,bspl):
@@ -456,6 +415,16 @@ def iter_SDM(points,bspl):
 
         # Compute point attributes
         dist,rad,Ta_tk,No_tk,tk,neigh = compute_points_attributes(points,bspl)
+        non_out_ind = get_non_outliers(dist)
+
+        # Remove the outliers
+        points = points[non_out_ind]
+        dist = dist[non_out_ind]
+        rad = rad[non_out_ind]
+        Ta_tk = Ta_tk[non_out_ind]
+        No_tk = No_tk[non_out_ind]
+        tk = tk[non_out_ind]
+        neigh = neigh[non_out_ind]
 
         # Approximation error
         approx_error = compute_approx_error(dist)
@@ -509,11 +478,11 @@ def SDM_algorithm(points):
     #bspl.plot_curve(True)
     #plt.show()
     
-    #try:
-    bspl, error = iter_SDM(points,bspl)
-    #except:
-        #cust_print("An error occured while reconstructing the contour!")
-    bspl.plot_curve(True)
+    try:
+        bspl, error = iter_SDM(points,bspl)
+    except:
+        cust_print("An error occured while reconstructing the contour!")
+    bspl.plot_curve(False)
     return bspl, error
 
 def compute_circumference(bspl):
@@ -525,19 +494,18 @@ def compute_circumference(bspl):
     return circ
 
 def contour():
-    #datas = utility.mergedPointsXY
+    #path = r'C:\Users\Toshiba\Documents\Vincent MAIRE\lidar_waist_scan\data\data_test.txt'
+    #datas = np.loadtxt(path, dtype='d', delimiter=' ')
+    #plt.figure(utility.figMerge)
+    #plt.gca().set_aspect('equal')
+    #plt.plot(datas[:,0], datas[:,1], '.k', ms=3)
+    #for i in range(len(datas)):
+    #    points[i] = [datas[i,0],datas[i,1]]
     
-    path = r'C:\Users\Toshiba\Documents\Vincent MAIRE\lidar_waist_scan\data\data_test.txt'
-    datas = np.loadtxt(path, dtype='d', delimiter=' ')
-
-    plt.figure(utility.figMerge)
-    plt.gca().set_aspect('equal')
-    plt.plot(datas[:,0], datas[:,1], '.k', ms=3)
-    
+    datas = utility.mergedPointsXY
     points = np.zeros((len(datas),2))
     for i in range(len(datas)):
-        #points[i] = [datas[i].x,datas[i].y]
-        points[i] = [datas[i,0],datas[i,1]]
+        points[i] = [datas[i].x,datas[i].y]
 
     bspl, error = SDM_algorithm(points)
     circum = compute_circumference(bspl)
